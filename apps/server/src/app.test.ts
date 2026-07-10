@@ -215,4 +215,19 @@ describe("account and character API", () => {
     expect(preflight.statusCode).toBe(204);
     expect(preflight.headers["access-control-allow-headers"]).toContain("Idempotency-Key");
   });
+
+  it("rate-limits high-value item mutation routes before expensive store work", async () => {
+    const { app } = await testApp();
+    const statusCodes: number[] = [];
+    for (let index = 0; index < 13; index += 1) {
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/characters/character-id/inventory/item-id/enhance",
+      });
+      statusCodes.push(response.statusCode);
+    }
+
+    expect(statusCodes.filter((statusCode) => statusCode === 401)).toHaveLength(12);
+    expect(statusCodes.filter((statusCode) => statusCode === 429)).toHaveLength(1);
+  });
 });

@@ -325,7 +325,10 @@ export function registerRoutes(
 
   app.post<{
     Params: { id: string; instanceId: string };
-  }>("/v1/characters/:id/inventory/:instanceId/equip", async (request, reply) => {
+  }>(
+    "/v1/characters/:id/inventory/:instanceId/equip",
+    { config: { rateLimit: { max: 40, timeWindow: "1 minute" } } },
+    async (request, reply) => {
     const claims = await authenticate(request, reply, tokens);
     if (!claims) return;
     const character = await store.getCharacterForAccount(request.params.id, claims.accountId);
@@ -347,11 +350,15 @@ export function registerRoutes(
     } catch (error) {
       return itemOperationError(reply, error);
     }
-  });
+    },
+  );
 
   app.post<{
     Params: { id: string; slot: string };
-  }>("/v1/characters/:id/equipment/:slot/unequip", async (request, reply) => {
+  }>(
+    "/v1/characters/:id/equipment/:slot/unequip",
+    { config: { rateLimit: { max: 40, timeWindow: "1 minute" } } },
+    async (request, reply) => {
     const claims = await authenticate(request, reply, tokens);
     if (!claims) return;
     const character = await store.getCharacterForAccount(request.params.id, claims.accountId);
@@ -372,11 +379,15 @@ export function registerRoutes(
     } catch (error) {
       return itemOperationError(reply, error);
     }
-  });
+    },
+  );
 
   app.post<{
     Params: { id: string; instanceId: string };
-  }>("/v1/characters/:id/inventory/:instanceId/use", async (request, reply) => {
+  }>(
+    "/v1/characters/:id/inventory/:instanceId/use",
+    { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } },
+    async (request, reply) => {
     const claims = await authenticate(request, reply, tokens);
     if (!claims) return;
     const character = await store.getCharacterForAccount(request.params.id, claims.accountId);
@@ -420,11 +431,15 @@ export function registerRoutes(
     } catch (error) {
       return itemOperationError(reply, error);
     }
-  });
+    },
+  );
 
   app.post<{
     Params: { id: string; instanceId: string };
-  }>("/v1/characters/:id/inventory/:instanceId/enhance", async (request, reply) => {
+  }>(
+    "/v1/characters/:id/inventory/:instanceId/enhance",
+    { config: { rateLimit: { max: 12, timeWindow: "1 minute" } } },
+    async (request, reply) => {
     const claims = await authenticate(request, reply, tokens);
     if (!claims) return;
     const character = await store.getCharacterForAccount(request.params.id, claims.accountId);
@@ -452,5 +467,6 @@ export function registerRoutes(
     } catch (error) {
       return itemOperationError(reply, error);
     }
-  });
+    },
+  );
 }
