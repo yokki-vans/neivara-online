@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "Project-original clean-room artwork",
   "textures": {
     "valeGround": {
@@ -9,10 +9,41 @@
     "wellspringStone": {
       "url": "./textures/neivara-stone-path.jpg",
       "kind": "tileable-albedo"
+    },
+    "characterMaterialAtlas": {
+      "url": "./textures/neivara-character-material-atlas.jpg",
+      "kind": "material-atlas"
+    },
+    "dawnmereEnvironmentAtlas": {
+      "url": "./textures/dawnmere-environment-material-atlas.jpg",
+      "kind": "material-atlas"
+    },
+    "dawnmereMossLimestone": {
+      "url": "./textures/dawnmere/moss-limestone.jpg",
+      "kind": "tileable-albedo"
+    },
+    "dawnmerePackedEarth": {
+      "url": "./textures/dawnmere/packed-earth.jpg",
+      "kind": "tileable-albedo"
+    },
+    "dawnmereRiverStone": {
+      "url": "./textures/dawnmere/river-stone.jpg",
+      "kind": "tileable-albedo"
+    },
+    "dawnmereRootedRuin": {
+      "url": "./textures/dawnmere/rooted-ruin.jpg",
+      "kind": "tileable-albedo"
+    },
+    "dawnmereCaveRock": {
+      "url": "./textures/dawnmere/cave-rock.jpg",
+      "kind": "tileable-albedo"
     }
   },
   "concepts": {
     "peoples": "./concepts/neivara-character-lineup.jpg",
-    "equipment": "./concepts/neivara-equipment-sheet.jpg"
+    "equipment": "./concepts/neivara-equipment-sheet.jpg",
+    "characterRosterV2": "./concepts/neivara-character-roster-v2.jpg",
+    "dawnmereCrossing": "./concepts/dawnmere-crossing-concept.jpg",
+    "dawnmereMonsters": "./concepts/dawnmere-monsters-sheet.jpg"
   }
 }

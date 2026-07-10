@@ -1,15 +1,23 @@
 import type { IncomingMessage } from "node:http";
 import { describe, expect, it } from "vitest";
 import {
+  EngineHandshakeSecurity,
   HandshakeAdmissionController,
   createRequestIpResolver,
   type HandshakeAdmissionOptions,
 } from "./handshake-security.js";
 
-function request(remoteAddress: string, forwardedFor?: string): IncomingMessage {
+function request(
+  remoteAddress: string,
+  forwardedFor?: string,
+  origin?: string,
+): IncomingMessage {
   return {
     socket: { remoteAddress },
-    headers: forwardedFor ? { "x-forwarded-for": forwardedFor } : {},
+    headers: {
+      ...(forwardedFor ? { "x-forwarded-for": forwardedFor } : {}),
+      ...(origin ? { origin } : {}),
+    },
   } as unknown as IncomingMessage;
 }
 
@@ -40,6 +48,38 @@ describe("Engine.IO client IP resolution", () => {
 });
 
 describe("pre-auth handshake admission", () => {
+  it("rejects disallowed origins before consuming an admission reservation", () => {
+    const security = new EngineHandshakeSecurity(false, ["https://game.example"], limits);
+    const result = (candidate: IncomingMessage): { error: string | null; accepted: boolean } => {
+      let outcome = { error: "callback was not invoked" as string | null, accepted: false };
+      security.allowRequest(candidate, (error, accepted) => {
+        outcome = { error, accepted };
+      });
+      return outcome;
+    };
+
+    for (let index = 0; index < 20; index += 1) {
+      expect(result(request("203.0.113.10", undefined, "https://evil.example"))).toMatchObject({
+        accepted: false,
+      });
+    }
+    expect(result(request("203.0.113.10", undefined, "https://game.example"))).toEqual({
+      error: null,
+      accepted: true,
+    });
+    security.close();
+  });
+
+  it("allows non-browser clients that do not send an Origin header", () => {
+    const security = new EngineHandshakeSecurity(false, ["https://game.example"], limits);
+    let accepted = false;
+    security.allowRequest(request("203.0.113.11"), (_error, value) => {
+      accepted = value;
+    });
+    expect(accepted).toBe(true);
+    security.close();
+  });
+
   it("bounds pending and active sessions per IP and globally", () => {
     const controller = new HandshakeAdmissionController(limits);
     const first = controller.admit("ip-a");

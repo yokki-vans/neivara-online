@@ -13,13 +13,15 @@ afterEach(async () => {
   await Promise.all(applications.splice(0).map(({ app }) => app.close()));
 });
 
-async function listeningApplication(): Promise<{ application: Application; origin: string }> {
+async function listeningApplication(
+  clientOrigins = "http://localhost:5173",
+): Promise<{ application: Application; origin: string }> {
   const application = await createApplication({
     config: loadConfig({
       NODE_ENV: "test",
       STORAGE_MODE: "memory",
       JWT_SECRET: "test-secret-that-is-longer-than-thirty-two-characters",
-      CLIENT_ORIGINS: "http://localhost:5173",
+      CLIENT_ORIGINS: clientOrigins,
       TRUST_PROXY: "false",
     }),
     startWorld: false,
@@ -31,6 +33,69 @@ async function listeningApplication(): Promise<{ application: Application; origi
 }
 
 describe("pre-auth Engine.IO handshake gate", () => {
+  it("rejects a disallowed polling Origin without consuming handshake capacity", async () => {
+    const { origin } = await listeningApplication();
+    const rejectedStatuses = await Promise.all(
+      Array.from({ length: 12 }, async (_unused, index) => {
+        const response = await fetch(
+          `${origin}/socket.io/?EIO=4&transport=polling&t=evil-${index}`,
+          { headers: { origin: "https://evil.example" } },
+        );
+        return response.status;
+      }),
+    );
+    expect(rejectedStatuses).toEqual(Array.from({ length: 12 }, () => 403));
+
+    const allowed = await fetch(
+      `${origin}/socket.io/?EIO=4&transport=polling&t=allowed`,
+      { headers: { origin: "http://localhost:5173" } },
+    );
+    expect(allowed.status).toBe(200);
+    expect(await allowed.text()).toMatch(/^0\{/u);
+  });
+
+  it("allows missing, custom-domain and Railway polling origins", async () => {
+    const { origin } = await listeningApplication(
+      "https://play.neivara.example,https://neivara-production.up.railway.app",
+    );
+    for (const [label, requestOrigin] of [
+      ["missing", undefined],
+      ["custom", "https://play.neivara.example"],
+      ["railway", "https://neivara-production.up.railway.app"],
+    ] as const) {
+      const response = await fetch(
+        `${origin}/socket.io/?EIO=4&transport=polling&t=${label}`,
+        requestOrigin ? { headers: { origin: requestOrigin } } : undefined,
+      );
+      expect(response.status, label).toBe(200);
+    }
+  });
+
+  it("rejects a disallowed websocket Origin", async () => {
+    const { origin } = await listeningApplication();
+    const socket = connect(origin, {
+      autoConnect: false,
+      reconnection: false,
+      transports: ["websocket"],
+      extraHeaders: { origin: "https://evil.example" },
+    });
+    sockets.push(socket);
+    const rejected = new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("connect_error timeout")), 3_000);
+      socket.once("connect", () => {
+        clearTimeout(timeout);
+        reject(new Error("Disallowed websocket Origin connected"));
+      });
+      socket.once("connect_error", () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+    });
+    socket.connect();
+    await expect(rejected).resolves.toBeUndefined();
+    expect(socket.connected).toBe(false);
+  });
+
   it("rejects an unauthenticated 185-request polling flood before sessions accumulate", async () => {
     const { origin } = await listeningApplication();
     const statuses = await Promise.all(
@@ -66,7 +131,7 @@ describe("pre-auth Engine.IO handshake gate", () => {
       method: "POST",
       url: "/v1/characters",
       headers: { authorization: `Bearer ${token}` },
-      payload: { name: "СтражРубежа", race: "erim", classId: "warbound" },
+      payload: { name: "СтражРубежа", race: "human", gender: "male", classId: "warrior" },
     });
     const characterId = created.json<{ character: { id: string } }>().character.id;
 

@@ -23,18 +23,18 @@ describe("equipment presentation rules", () => {
   it("explains both level and class restrictions", () => {
     const availability = getEquipAvailability(
       getItem("bridgewatch_greatblade"),
-      { level: 1, classId: "pathfinder" },
+      { level: 1, classId: "mage" },
     );
 
     expect(availability.allowed).toBe(false);
     expect(availability.reasons).toContain("Нужен 11 уровень");
-    expect(availability.reasons.join(" ")).toContain("Ратоборец");
+    expect(availability.reasons.join(" ")).toContain("Воин");
   });
 
   it("allows a matching class at the required level", () => {
     expect(getEquipAvailability(
       getItem("bridgewatch_greatblade"),
-      { level: 11, classId: "warbound" },
+      { level: 11, classId: "warrior" },
     )).toEqual({ allowed: true, reasons: [] });
   });
 });

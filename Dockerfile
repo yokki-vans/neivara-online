@@ -10,7 +10,8 @@ RUN npm ci
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY apps/server apps/server
-RUN npm run build:server
+COPY apps/client apps/client
+RUN npm run build
 
 FROM node:22-alpine AS runtime-deps
 WORKDIR /app
@@ -33,6 +34,7 @@ COPY --from=build /app/packages/shared/package.json ./packages/shared/package.js
 COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 COPY --from=build /app/apps/server/package.json ./apps/server/package.json
 COPY --from=build /app/apps/server/dist ./apps/server/dist
+COPY --from=build /app/apps/client/dist ./apps/client/dist
 
 USER node
 EXPOSE 3001

@@ -4,6 +4,7 @@ import type {
   ConsumableEffect,
   EnhancementCost,
   EquipmentSlot,
+  GenderId,
   InventoryView,
   InventoryStack,
   ItemInstance,
@@ -34,6 +35,8 @@ export interface NewCharacter {
   accountId: string;
   name: string;
   race: RaceId;
+  /** Defaults to male for trusted legacy import callers; the public API requires it. */
+  gender?: GenderId;
   classId: ClassId;
   hp: number;
   mp: number;

@@ -23,7 +23,7 @@ async function request(path, init = {}, token) {
   return body;
 }
 
-async function createPlayer(label, race, classId) {
+async function createPlayer(label, race, gender, classId) {
   const suffix = randomBytes(5).toString("hex");
   const auth = await request("/v1/auth/register", {
     method: "POST",
@@ -33,7 +33,7 @@ async function createPlayer(label, race, classId) {
     "/v1/characters",
     {
       method: "POST",
-      body: JSON.stringify({ name: `${label}${letters()}`, race, classId }),
+      body: JSON.stringify({ name: `${label}${letters()}`, race, gender, classId }),
     },
     auth.token,
   );
@@ -72,8 +72,15 @@ function connect(player) {
   return Promise.all([connected, ready]).then(() => socket);
 }
 
-const first = await createPlayer("Alder", "erim", "pathfinder");
-const second = await createPlayer("Birch", "vaeli", "lifewarden");
+const first = await createPlayer("Alder", "human", "female", "mage");
+const second = await createPlayer("Birch", "orc", "male", "warrior");
+if (
+  first.character.gender !== "female"
+  || first.character.race !== "human"
+  || first.character.classId !== "mage"
+) {
+  throw new Error("Character identity was not persisted in the creation response");
+}
 
 const initialInventory = await request(
   `/v1/characters/${first.character.id}/inventory`,
@@ -87,13 +94,13 @@ const starterWeapon = initialInventory.inventory.equipment.main_hand;
 if (!starterWeapon || !initialInventory.equipment.main_hand) {
   throw new Error("Starter weapon was not auto-equipped");
 }
-const attackWithWeapon = initialInventory.derivedStats.physicalAttack;
+const attackWithWeapon = initialInventory.derivedStats.spellPower;
 const unequipped = await request(
   `/v1/characters/${first.character.id}/equipment/main_hand/unequip`,
   { method: "POST", body: "{}" },
   first.token,
 );
-if (unequipped.inventory.equipment.main_hand || unequipped.derivedStats.physicalAttack >= attackWithWeapon) {
+if (unequipped.inventory.equipment.main_hand || unequipped.derivedStats.spellPower >= attackWithWeapon) {
   throw new Error("Unequip did not remove the weapon stat contribution");
 }
 const reequipped = await request(
@@ -103,7 +110,7 @@ const reequipped = await request(
 );
 if (
   reequipped.inventory.equipment.main_hand?.instanceId !== starterWeapon.instanceId
-  || reequipped.derivedStats.physicalAttack !== attackWithWeapon
+  || reequipped.derivedStats.spellPower !== attackWithWeapon
 ) {
   throw new Error("Equip did not restore the authoritative loadout and stats");
 }
@@ -245,7 +252,7 @@ try {
 
   socketA.emit("combat:use", {
     seq: 10,
-    abilityId: "far_mark",
+    abilityId: "aether_bolt",
     targetId: targetMonster.id,
   });
   for (let index = 0; index < 7; index += 1) {
@@ -254,7 +261,7 @@ try {
       abilityId: "basic",
       targetId: targetMonster.id,
     });
-    await new Promise((resolve) => setTimeout(resolve, 950));
+    await new Promise((resolve) => setTimeout(resolve, 1_050));
   }
 
   const [, questResult, xpResult, lootResult] = await Promise.all([
@@ -315,6 +322,9 @@ try {
   );
   if (!persistedCharacter || persistedCharacter.xp < xpResultPlayer.xp) {
     throw new Error("Character progression was not persisted");
+  }
+  if (persistedCharacter.gender !== "female") {
+    throw new Error("Character gender was not persisted in the roster");
   }
   if (!persistedDetails.inventory.items.some((item) => item.itemId === ownedDrop.itemId)) {
     throw new Error("Inventory was not persisted");

@@ -10,13 +10,13 @@ import {
 
 const key = (suffix: string) => `test-idempotency-${suffix}`;
 
-async function createCharacter(store: MemoryGameStore, classId: "warbound" | "pathfinder" = "warbound") {
+async function createCharacter(store: MemoryGameStore, classId: "warrior" | "mage" = "warrior") {
   const account = await store.createAccount(`user-${classId}`, "hash");
   const definition = getClass(classId);
   return store.createCharacter({
     accountId: account.id,
-    name: classId === "warbound" ? "Ратник" : "Стрелок",
-    race: "erim",
+    name: classId === "warrior" ? "Ратник" : "Эфирник",
+    race: "human",
     classId,
     hp: definition.baseHp,
     mp: definition.baseMp,
@@ -41,12 +41,12 @@ describe("equipment and economy store", () => {
   it("atomically equips, unequips and validates class restrictions", async () => {
     const store = new MemoryGameStore();
     const character = await createCharacter(store);
-    await store.addInventoryItem(character.id, "whisperbranch_bow", 1);
+    await store.addInventoryItem(character.id, "emberglyph_staff", 1);
     const state = await store.getInventoryState(character.id);
-    const bow = state.inventory.items.find((item) => item.itemId === "whisperbranch_bow");
-    expect(bow).toBeDefined();
+    const staff = state.inventory.items.find((item) => item.itemId === "emberglyph_staff");
+    expect(staff).toBeDefined();
 
-    await expect(store.equipItem(character.id, bow!.instanceId)).rejects.toBeInstanceOf(
+    await expect(store.equipItem(character.id, staff!.instanceId)).rejects.toBeInstanceOf(
       InvalidOperationError,
     );
 
@@ -116,7 +116,7 @@ describe("equipment and economy store", () => {
     )?.quantity).toBe(3);
     expect(delayedReplay.result.cooldownReadyAt).toBe(result.cooldownReadyAt);
 
-    const otherCharacter = await createCharacter(store, "pathfinder");
+    const otherCharacter = await createCharacter(store, "mage");
     const otherTonic = (await store.getInventoryState(otherCharacter.id)).inventory.items.find(
       (item) => item.itemId === "field_tonic",
     )!;

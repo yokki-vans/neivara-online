@@ -1,9 +1,11 @@
 import type { CharacterSummary } from "@neivara/shared";
 import { lazy, Suspense, useState } from "react";
 import { AuthScreen } from "./screens/AuthScreen";
-import { CharacterScreen } from "./screens/CharacterScreen";
 import { readSession, writeSession, type Session } from "./session";
 
+const CharacterScreen = lazy(() =>
+  import("./screens/CharacterScreen").then((module) => ({ default: module.CharacterScreen })),
+);
 const GameScreen = lazy(() =>
   import("./screens/GameScreen").then((module) => ({ default: module.GameScreen })),
 );
@@ -25,11 +27,13 @@ export function App() {
   if (!session) return <AuthScreen onAuthenticated={acceptSession} />;
   if (!character) {
     return (
-      <CharacterScreen
-        session={session}
-        onChoose={setCharacter}
-        onLogout={logout}
-      />
+      <Suspense fallback={<div className="game-loading">Открываем реестр героев…</div>}>
+        <CharacterScreen
+          session={session}
+          onChoose={setCharacter}
+          onLogout={logout}
+        />
+      </Suspense>
     );
   }
   return (

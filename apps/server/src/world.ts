@@ -2,7 +2,9 @@ import { randomInt, randomUUID } from "node:crypto";
 import {
   ABILITIES,
   ITEMS,
+  MONSTER_DEFINITIONS,
   PROTOCOL_VERSION,
+  STARTER_ZONE,
   getClass,
   levelFromTotalXp,
   normalizeItemStats,
@@ -120,6 +122,38 @@ const SPAWN: Vec3 = { x: 0, y: 0, z: 0 };
 const ARENA_CENTER = { x: 29, z: 27 };
 const ARENA_RADIUS = 10;
 
+interface MonsterSpawnPocket {
+  kind: RuntimeMonster["kind"];
+  positions: readonly (readonly [x: number, z: number])[];
+}
+
+const MONSTER_SPAWN_POCKETS: readonly MonsterSpawnPocket[] = [
+  {
+    kind: "thorn_prowler",
+    positions: [[-17, -8], [-22, -4], [-19, 3], [-13, -3]],
+  },
+  {
+    kind: "moss_mauler",
+    positions: [[-8, 18], [-1, 22], [6, 19]],
+  },
+  {
+    kind: "cave_shrieker",
+    positions: [[-31, 11], [-35, 17], [-28, 22]],
+  },
+  {
+    kind: "bramble_boar",
+    positions: [[13, -18], [19, -22], [24, -14], [9, -25]],
+  },
+  {
+    kind: "ruin_sentinel",
+    positions: [[-34, 30]],
+  },
+  {
+    kind: "ember_drake",
+    positions: [[35, -31]],
+  },
+];
+
 function distance2d(a: Vec3, b: Vec3): number {
   return Math.hypot(a.x - b.x, a.z - b.z);
 }
@@ -181,6 +215,7 @@ function publicPlayer(player: RuntimePlayer): PlayerSnapshot {
     id: player.id,
     name: player.name,
     race: player.race,
+    gender: player.gender,
     classId: player.classId,
     position: { ...player.position },
     rotationY: player.rotationY,
@@ -232,30 +267,28 @@ function createMonster(
   kind: RuntimeMonster["kind"],
   x: number,
   z: number,
-  elite = false,
 ): RuntimeMonster {
-  const level = elite ? 3 : 1;
-  const hp = elite ? 280 : 82;
+  const definition = MONSTER_DEFINITIONS[kind];
   const position = { x, y: 0, z };
   return {
     id: randomUUID(),
     kind,
-    name: elite ? "Полый дозорный" : "Топкий отголосок",
+    name: definition.name,
     position: { ...position },
     spawn: { ...position },
     rotationY: 0,
-    level,
-    hp,
-    maxHp: hp,
+    level: definition.level,
+    hp: definition.maxHp,
+    maxHp: definition.maxHp,
     alive: true,
-    elite,
+    elite: definition.elite,
     targetId: null,
     respawnAt: null,
-    speed: elite ? 2.5 : 2.1,
-    attackPower: elite ? 19 : 8,
-    aggroRange: elite ? 13 : 8,
-    attackRange: elite ? 2.4 : 1.8,
-    attackCooldownMs: elite ? 1_600 : 2_000,
+    speed: definition.speed,
+    attackPower: definition.attackPower,
+    aggroRange: definition.aggroRange,
+    attackRange: definition.attackRange,
+    attackCooldownMs: definition.attackCooldownMs,
     lastAttackAt: 0,
   };
 }
@@ -276,22 +309,12 @@ export class GameWorld {
     private readonly store: GameStore,
     private readonly lootRoll: () => number = () => randomInt(10_000),
   ) {
-    const spawns: Array<[number, number]> = [
-      [-17, -8],
-      [-21, 3],
-      [-13, 13],
-      [2, 19],
-      [14, 14],
-      [18, -4],
-      [8, -20],
-      [-9, -21],
-    ];
-    for (const [x, z] of spawns) {
-      const monster = createMonster("mireling", x, z);
-      this.monsters.set(monster.id, monster);
+    for (const pocket of MONSTER_SPAWN_POCKETS) {
+      for (const [x, z] of pocket.positions) {
+        const monster = createMonster(pocket.kind, x, z);
+        this.monsters.set(monster.id, monster);
+      }
     }
-    const elite = createMonster("hollow_sentinel", -34, 30, true);
-    this.monsters.set(elite.id, elite);
   }
 
   start(): void {
@@ -360,6 +383,7 @@ export class GameWorld {
       socketId: socket.id,
       name: character.name,
       race: character.race,
+      gender: character.gender,
       classId: character.classId,
       position: { ...savedPosition },
       rotationY: 0,
@@ -399,6 +423,7 @@ export class GameWorld {
         id: player.id,
         name: player.name,
         race: player.race,
+        gender: player.gender,
         classId: player.classId,
         level: player.level,
         xp: player.xp,
@@ -407,14 +432,14 @@ export class GameWorld {
       },
       inventory: player.inventory,
       quest: player.quest,
-      message: "Вы ощущаете тихий зов Истока. Найдите и победите три отголоска.",
+      message: "Вы прибыли на Переправу Донмер. Обезопасьте подступы и победите трёх обычных существ.",
     });
     this.broadcastChat({
       id: randomUUID(),
       at: Date.now(),
       senderId: null,
       senderName: "Мир",
-      text: `${player.name} вступает в Долину Тихих Истоков.`,
+      text: `${player.name} прибывает в зону «${STARTER_ZONE.name}».`,
       channel: "system",
     });
     this.sendSnapshots();
@@ -470,7 +495,7 @@ export class GameWorld {
     const player = this.playerBySocket(socketId);
     if (!player) return;
     if (!player.alive) {
-      this.emitAbilityResult(player, input, false, Date.now(), "Герой ожидает возвращения к Истоку.");
+      this.emitAbilityResult(player, input, false, Date.now(), "Герой ожидает возвращения в безопасный двор.");
       return;
     }
     this.resolveAbility(player, input);
@@ -610,7 +635,7 @@ export class GameWorld {
       player.position = { ...SPAWN };
       player.input = { ...player.input, direction: { x: 0, z: 0 }, sprint: false };
       player.pvpEnabled = false;
-      this.system(player, "info", "Камень возвращает вас к Тихому Истоку.");
+      this.system(player, "info", `Камень возвращает вас в безопасный двор зоны «${STARTER_ZONE.name}».`);
     }
   }
 
@@ -797,31 +822,6 @@ export class GameWorld {
       return;
     }
 
-    if (input.abilityId === "mending_current") {
-      const target = input.targetId ? this.players.get(input.targetId) : player;
-      if (!target || !target.alive || distance2d(player.position, target.position) > ability.range) {
-        this.emitAbilityResult(player, input, false, now, "Цель лечения вне досягаемости.");
-        return;
-      }
-      player.mp -= ability.manaCost;
-      const cooldownReadyAt = now + ability.cooldownMs / (1 + player.derivedStats.hastePercent);
-      player.cooldowns.set(input.abilityId, cooldownReadyAt);
-      this.emitAbilityResult(player, input, true, now);
-      const amount = Math.floor(24 + player.level * 7 + player.derivedStats.spellPower * 0.7);
-      const applied = Math.max(0, Math.min(amount, target.maxHp - target.hp));
-      target.hp += applied;
-      this.combat({
-        sourceId: player.id,
-        targetId: target.id,
-        abilityId: input.abilityId,
-        kind: "heal",
-        amount: applied,
-        critical: false,
-        message: `${player.name} восстанавливает ${applied} здоровья герою ${target.name}.`,
-      });
-      return;
-    }
-
     const targetId = input.targetId ?? player.targetId;
     const target = targetId ? this.damageTarget(targetId) : null;
     if (!target || !target.value.alive) {
@@ -854,7 +854,7 @@ export class GameWorld {
       : baseCooldownMs / (1 + player.derivedStats.hastePercent));
     player.cooldowns.set(input.abilityId, cooldownReadyAt);
     this.emitAbilityResult(player, input, true, now);
-    if (input.abilityId === "iron_vow") player.damageReductionUntil = now + 4_000;
+    if (input.abilityId === "vanguard_strike") player.damageReductionUntil = now + 4_000;
 
     const targetEvasion = target.kind === "player" ? target.value.derivedStats.evasion : target.value.level * 3;
     const hitChance = clamp(
@@ -876,7 +876,7 @@ export class GameWorld {
     }
 
     const criticalChance = clamp(
-      player.derivedStats.criticalChance + (input.abilityId === "far_mark" ? 0.2 : 0),
+      player.derivedStats.criticalChance,
       0,
       0.65,
     );
@@ -884,18 +884,12 @@ export class GameWorld {
     const multiplier =
       input.abilityId === "basic"
         ? 1
-        : input.abilityId === "ember_sigil"
+        : input.abilityId === "aether_bolt"
           ? 1.75
-          : input.abilityId === "echo_companion"
-            ? 1.5
-            : 1.35;
+          : 1.35;
     const spellAttack =
-      input.abilityId === "ember_sigil" ||
-      input.abilityId === "echo_companion" ||
-      (input.abilityId === "basic" &&
-        (player.classId === "runesmith" ||
-          player.classId === "lifewarden" ||
-          player.classId === "oathweaver"));
+      input.abilityId === "aether_bolt" ||
+      (input.abilityId === "basic" && player.classId === "mage");
     const attackPower = spellAttack
       ? player.derivedStats.spellPower
       : player.derivedStats.physicalAttack;
@@ -936,14 +930,17 @@ export class GameWorld {
   }
 
   private defeatMonster(monster: RuntimeMonster, killer: RuntimePlayer): void {
+    const definition = MONSTER_DEFINITIONS[monster.kind];
     monster.alive = false;
     monster.hp = 0;
     monster.targetId = null;
-    monster.respawnAt = Date.now() + (monster.elite ? 22_000 : 12_000);
+    monster.respawnAt = Date.now() + definition.respawnMs;
 
     const oldLevel = killer.level;
-    killer.xp += (monster.elite ? 125 : 42) * monster.level;
-    const baseGold = monster.elite ? 18 : 5 + (this.nextLootRoll() % 5);
+    killer.xp += definition.xpReward;
+    const goldSpread = definition.goldMax - definition.goldMin;
+    const baseGold = definition.goldMin
+      + (goldSpread > 0 ? this.nextLootRoll() % (goldSpread + 1) : 0);
     const salvageBonus = Math.min(
       0.25,
       (killer.equipmentStats.criticalRating + killer.equipmentStats.accuracy) / 1_000,
@@ -975,11 +972,9 @@ export class GameWorld {
     const shouldDrop = true;
     if (shouldDrop) {
       const eliteEquipment: ItemId =
-        killer.classId === "warbound"
+        killer.classId === "warrior"
           ? "memoryglass_buckler"
-          : killer.classId === "pathfinder"
-            ? "stormglass_longbow"
-            : "moonsilt_amulet";
+          : "moonsilt_amulet";
       const rareEquipmentChance = 0.12 + Math.min(0.18, salvageBonus);
       const rareChanceBps = monster.elite ? Math.round(rareEquipmentChance * 10_000) : 0;
       const rareRoll = this.nextLootRoll();
@@ -1021,7 +1016,7 @@ export class GameWorld {
     }
 
     this.emitInventoryUpdate(killer);
-    if (monster.kind === "mireling" && killer.quest.status === "active") {
+    if (definition.starterQuestEligible && killer.quest.status === "active") {
       void this.recordQuestKill(killer).catch(() => {
         this.system(killer, "error", "Не удалось записать прогресс поручения. Попробуйте ещё раз.");
       });
@@ -1064,7 +1059,7 @@ export class GameWorld {
     player.alive = true;
     player.respawnAt = null;
     player.pvpEnabled = false;
-    this.system(player, "info", "Исток возвращает вас к Звёздному мосту.");
+    this.system(player, "info", "Вы возвращаетесь в безопасный двор Переправы Донмер.");
   }
 
   private isArena(position: Vec3): boolean {
@@ -1144,8 +1139,8 @@ export class GameWorld {
         tick: this.tickNumber,
         selfId: player.id,
         lastProcessedInput: player.lastProcessedInput,
-        zoneId: "silent_wellspring_vale",
-        zoneName: "Долина Тихих Истоков",
+        zoneId: STARTER_ZONE.id,
+        zoneName: STARTER_ZONE.name,
         players,
         monsters,
         loot,

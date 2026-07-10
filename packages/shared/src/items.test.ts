@@ -109,12 +109,12 @@ describe("item catalog", () => {
 
 describe("equipment requirements", () => {
   it("rejects wrong classes, insufficient levels, slots, and non-equipment", () => {
-    expect(canEquipItem("stormglass_longbow", { level: 60, classId: "warbound" })).toBe(false);
-    expect(canEquipItem("stormglass_longbow", { level: 1, classId: "pathfinder" })).toBe(false);
-    expect(canEquipItem("stormglass_longbow", { level: 60, classId: "pathfinder" }, "head")).toBe(false);
-    expect(canEquipItem("field_tonic", { level: 60, classId: "lifewarden" })).toBe(false);
+    expect(canEquipItem("stormglass_longbow", { level: 60, classId: "mage" })).toBe(false);
+    expect(canEquipItem("stormglass_longbow", { level: 1, classId: "warrior" })).toBe(false);
+    expect(canEquipItem("stormglass_longbow", { level: 60, classId: "warrior" }, "head")).toBe(false);
+    expect(canEquipItem("field_tonic", { level: 60, classId: "mage" })).toBe(false);
 
-    const check = checkItemRequirements("stormglass_longbow", { level: 1, classId: "warbound" }, "head");
+    const check = checkItemRequirements("stormglass_longbow", { level: 1, classId: "mage" }, "head");
     expect(check.allowed).toBe(false);
     expect(check.failures.map((failure) => failure.code)).toEqual(["level", "class", "slot"]);
   });

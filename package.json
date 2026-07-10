@@ -1,6 +1,6 @@
 {
   "name": "neivara-online",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
@@ -21,7 +21,9 @@
     "smoke": "node tools/smoke-multiplayer.mjs",
     "typecheck": "npm run build:shared && npm run typecheck --workspace @neivara/server && npm run typecheck --workspace @neivara/client",
     "lint": "eslint .",
-    "assets:check": "node tools/verify-assets.mjs",
+    "assets:generate:3d": "node tools/generate-3d-assets.mjs",
+    "assets:check:3d": "node tools/verify-3d-assets.mjs",
+    "assets:check": "node tools/verify-assets.mjs && node tools/verify-3d-assets.mjs",
     "start": "npm run start --workspace @neivara/server"
   },
   "devDependencies": {

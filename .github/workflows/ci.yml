@@ -41,6 +41,39 @@ jobs:
       - run: npm run build
       - name: Build production server container
         run: docker build --target runtime --tag neivara-server:${{ github.sha }} .
+      - name: Run unified production container smoke
+        run: |
+          docker run --detach --name neivara-runtime-smoke \
+            --add-host host.docker.internal:host-gateway \
+            --publish 3001:3001 \
+            --env NODE_ENV=production \
+            --env STORAGE_MODE=postgres \
+            --env DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:5432/neivara_test \
+            --env DATABASE_SSL=false \
+            --env JWT_SECRET=ci-runtime-smoke-secret-longer-than-thirty-two-characters \
+            --env CLIENT_ORIGINS=http://localhost:3001 \
+            --env AUTO_MIGRATE=true \
+            --env LOG_LEVEL=warn \
+            neivara-server:${{ github.sha }}
+
+          curl --fail --silent --show-error \
+            --retry 30 --retry-delay 1 --retry-all-errors \
+            http://127.0.0.1:3001/readyz >/dev/null
+          curl --fail --silent --show-error http://127.0.0.1:3001/ \
+            | grep --quiet 'Истоки Нейвары'
+          curl --fail --silent --show-error http://127.0.0.1:3001/assets/models/manifest.json \
+            | node -e 'let value=""; process.stdin.on("data", chunk => value += chunk); process.stdin.on("end", () => { const manifest = JSON.parse(value); if (manifest.assets?.length !== 34) process.exit(1); });'
+          curl --fail --silent --show-error http://127.0.0.1:3001/v1/catalog \
+            | node -e 'let value=""; process.stdin.on("data", chunk => value += chunk); process.stdin.on("end", () => { const catalog = JSON.parse(value); if (catalog.protocolVersion !== 3 || catalog.zone?.id !== "dawnmere_crossing") process.exit(1); });'
+          curl --fail --silent --show-error \
+            --header 'Origin: http://localhost:3001' \
+            'http://127.0.0.1:3001/socket.io/?EIO=4&transport=polling' \
+            | grep --quiet '^0{'
+      - name: Collect unified container logs
+        if: always()
+        run: |
+          docker logs neivara-runtime-smoke 2>&1 || true
+          docker rm --force neivara-runtime-smoke >/dev/null 2>&1 || true
       - name: Generate CycloneDX SBOM
         run: npm sbom --sbom-format cyclonedx > sbom.cdx.json
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -48,41 +81,3 @@ jobs:
           name: neivara-sbom
           path: sbom.cdx.json
           if-no-files-found: error
-
-  deploy-pages:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: verify
-    runs-on: ubuntu-latest
-    concurrency:
-      group: pages
-      cancel-in-progress: true
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    env:
-      VITE_API_URL: ${{ vars.VITE_API_URL }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - name: Validate production API URL
-        run: >-
-          node -e 'const value=process.env.VITE_API_URL?.trim();
-          if(!value) throw new Error("Repository variable VITE_API_URL is required");
-          const url=new URL(value);
-          if(url.protocol!=="https:") throw new Error("VITE_API_URL must use HTTPS");'
-      - run: npm run build:client
-      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
-      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
-        with:
-          path: apps/client/dist
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CLASS_IDS, type ClassId } from "./content.js";
+import { CLASS_IDS, type ClassId, type StarterZoneId } from "./content.js";
 import { MAX_LEVEL } from "./progression.js";
 
 export const ITEM_IDS = [
@@ -326,7 +326,7 @@ export interface AccessoryItemDefinition extends EquippableDefinition {
 export type ConsumableEffect =
   | { kind: "restore"; resource: "hp" | "mp"; amount: number }
   | { kind: "buff"; stats: ItemStats; durationMs: number }
-  | { kind: "return"; destinationId: "silent_wellspring_vale"; castTimeMs: number };
+  | { kind: "return"; destinationId: StarterZoneId; castTimeMs: number };
 
 export interface ConsumableItemDefinition extends BaseItemDefinition {
   category: "consumable";
@@ -409,7 +409,7 @@ export const ITEMS = {
     tradeable: true,
     usable: false,
     stats: { physicalAttack: 38, criticalRating: 7 },
-    requirements: requirements("pathbound", "fine", ["warbound"]),
+    requirements: requirements("pathbound", "fine", ["warrior"]),
     visual: visual("greatblade", "#c9b08d", "#c26c3d", 1.12),
     slot: "main_hand",
     allowedSlots: MAIN_HAND,
@@ -422,7 +422,7 @@ export const ITEMS = {
     id: "whisperbranch_bow",
     name: "Лук Шепчущей ветви",
     description: "Гибкий походный лук, сохраняющий точность на ходу.",
-    lore: "Ваэли выбирают ветвь, которая первой отвечает шелестом на имя будущего владельца.",
+    lore: "Светлые эльфы выбирают ветвь, которая первой отвечает шелестом на имя будущего владельца.",
     category: "weapon",
     grade: "wayfarer",
     rarity: "common",
@@ -432,7 +432,7 @@ export const ITEMS = {
     tradeable: true,
     usable: false,
     stats: { physicalAttack: 12, accuracy: 5 },
-    requirements: requirements("wayfarer", "common", ["pathfinder"]),
+    requirements: requirements("wayfarer", "common", ["warrior"]),
     visual: visual("bow", "#7f9f5f", "#d9cf85"),
     slot: "main_hand",
     allowedSlots: MAIN_HAND,
@@ -455,7 +455,7 @@ export const ITEMS = {
     tradeable: true,
     usable: false,
     stats: { physicalAttack: 62, accuracy: 14, criticalRating: 12 },
-    requirements: requirements("oathforged", "rare", ["pathfinder"]),
+    requirements: requirements("oathforged", "rare", ["warrior"]),
     visual: visual("bow", "#718b9f", "#72d6f2", 1.1),
     slot: "main_hand",
     allowedSlots: MAIN_HAND,
@@ -478,7 +478,7 @@ export const ITEMS = {
     tradeable: true,
     usable: false,
     stats: { spellPower: 15, maxMp: 12 },
-    requirements: requirements("wayfarer", "common", ["runesmith", "lifewarden", "oathweaver"]),
+    requirements: requirements("wayfarer", "common", ["mage"]),
     visual: visual("staff", "#77518e", "#f09a66", 1.04),
     slot: "main_hand",
     allowedSlots: MAIN_HAND,
@@ -501,7 +501,7 @@ export const ITEMS = {
     tradeable: true,
     usable: false,
     stats: { spellPower: 13, maxMp: 14, resistance: 2 },
-    requirements: requirements("wayfarer", "common", ["lifewarden", "oathweaver"]),
+    requirements: requirements("wayfarer", "common", ["mage"]),
     visual: visual("scepter", "#5d8e91", "#7ae6d0", 0.92),
     slot: "main_hand",
     allowedSlots: MAIN_HAND,
@@ -514,7 +514,7 @@ export const ITEMS = {
     id: "duskneedle_dagger",
     name: "Кинжал Сумеречной иглы",
     description: "Узкий клинок, рассчитанный на точность и внезапный выпад.",
-    lore: "Нарай отмечают на обухе пройденные караваном созвездия, но никогда — поверженных врагов.",
+    lore: "Тёмные эльфы отмечают на обухе пройденные караваном созвездия, но никогда — поверженных врагов.",
     category: "weapon",
     grade: "wayfarer",
     rarity: "common",
@@ -524,7 +524,7 @@ export const ITEMS = {
     tradeable: true,
     usable: false,
     stats: { physicalAttack: 10, criticalRating: 6, hasteRating: 4 },
-    requirements: requirements("wayfarer", "common", ["pathfinder", "oathweaver"]),
+    requirements: requirements("wayfarer", "common", ["warrior", "mage"]),
     visual: visual("dagger", "#9d9ab2", "#b98ae8", 0.88),
     slot: "main_hand",
     allowedSlots: MAIN_HAND,
@@ -537,7 +537,7 @@ export const ITEMS = {
     id: "oathforge_hammer",
     name: "Молот Клятвенной кузни",
     description: "Боевой молот с сердечником, отзывающимся на крепкие обещания.",
-    lore: "Керранские кузнецы прекращают работу, если владелец нарушает клятву, данную при закалке.",
+    lore: "Гномьи кузнецы прекращают работу, если владелец нарушает клятву, данную при закалке.",
     category: "weapon",
     grade: "oathforged",
     rarity: "epic",
@@ -547,7 +547,7 @@ export const ITEMS = {
     tradeable: true,
     usable: false,
     stats: { physicalAttack: 70, armor: 10, accuracy: 6 },
-    requirements: requirements("oathforged", "epic", ["warbound"]),
+    requirements: requirements("oathforged", "epic", ["warrior"]),
     visual: visual("hammer", "#767f8b", "#e1995d", 1.08),
     slot: "main_hand",
     allowedSlots: MAIN_HAND,
@@ -570,7 +570,7 @@ export const ITEMS = {
     tradeable: true,
     usable: false,
     stats: { physicalAttack: 94, accuracy: 12, criticalRating: 10 },
-    requirements: requirements("sourceborn", "rare", ["warbound", "pathfinder"]),
+    requirements: requirements("sourceborn", "rare", ["warrior"]),
     visual: visual("spear", "#6e5948", "#8ee0ef", 1.16),
     slot: "main_hand",
     allowedSlots: MAIN_HAND,
@@ -593,7 +593,7 @@ export const ITEMS = {
     tradeable: true,
     usable: false,
     stats: { armor: 14, maxHp: 10 },
-    requirements: requirements("pathbound", "fine", ["warbound"]),
+    requirements: requirements("pathbound", "fine", ["warrior"]),
     visual: visual("helmet", "#78858b", "#c8894b"),
     slot: "head",
     allowedSlots: ["head"],
@@ -613,7 +613,7 @@ export const ITEMS = {
     tradeable: true,
     usable: false,
     stats: { armor: 27, resistance: 5, maxHp: 22 },
-    requirements: requirements("pathbound", "fine", ["warbound"]),
+    requirements: requirements("pathbound", "fine", ["warrior"]),
     visual: visual("chest", "#69787f", "#ca8750", 1.03),
     slot: "chest",
     allowedSlots: ["chest"],
@@ -633,7 +633,7 @@ export const ITEMS = {
     tradeable: true,
     usable: false,
     stats: { armor: 11, accuracy: 2 },
-    requirements: requirements("pathbound", "common", ["warbound"]),
+    requirements: requirements("pathbound", "common", ["warrior"]),
     visual: visual("gloves", "#718088", "#b77745"),
     slot: "hands",
     allowedSlots: ["hands"],
@@ -653,7 +653,7 @@ export const ITEMS = {
     tradeable: true,
     usable: false,
     stats: { armor: 19, maxHp: 14 },
-    requirements: requirements("pathbound", "common", ["warbound"]),
+    requirements: requirements("pathbound", "common", ["warrior"]),
     visual: visual("legs", "#65757c", "#b77745"),
     slot: "legs",
     allowedSlots: ["legs"],
@@ -673,7 +673,7 @@ export const ITEMS = {
     tradeable: true,
     usable: false,
     stats: { armor: 10, movementSpeedBps: 60 },
-    requirements: requirements("pathbound", "common", ["warbound"]),
+    requirements: requirements("pathbound", "common", ["warrior"]),
     visual: visual("boots", "#59676d", "#aa7145"),
     slot: "feet",
     allowedSlots: ["feet"],
@@ -793,7 +793,7 @@ export const ITEMS = {
     tradeable: true,
     usable: false,
     stats: { armor: 18, resistance: 16, maxHp: 12 },
-    requirements: requirements("pathbound", "rare", ["warbound", "lifewarden"]),
+    requirements: requirements("pathbound", "rare", ["warrior", "mage"]),
     visual: visual("shield", "#7399a8", "#74d8ed", 0.94),
     slot: "off_hand",
     allowedSlots: ["off_hand"],
@@ -954,7 +954,7 @@ export const ITEMS = {
   returning_stone: {
     id: "returning_stone",
     name: "Камень Возвратного круга",
-    description: "После восьмисекундного сосредоточения возвращает к Тихому Истоку.",
+    description: "После восьмисекундного сосредоточения возвращает на Переправу Донмер.",
     lore: "Его вытачивают из камня, взятого у порога дома, и оставляют одну грань необработанной.",
     category: "consumable",
     grade: "wayfarer",
@@ -968,7 +968,7 @@ export const ITEMS = {
     requirements: requirements("wayfarer", "rare"),
     visual: visual("stone", "#607d8d", "#8ce2ef"),
     cooldownMs: 120_000,
-    effect: { kind: "return", destinationId: "silent_wellspring_vale", castTimeMs: 8_000 },
+    effect: { kind: "return", destinationId: "dawnmere_crossing", castTimeMs: 8_000 },
   },
   mire_shard: {
     id: "mire_shard",
@@ -1060,11 +1060,8 @@ export const ITEMS = {
 export const ITEM_CATALOG: readonly ItemDefinition[] = ITEM_IDS.map((id) => ITEMS[id]);
 
 export const STARTER_WEAPON_BY_CLASS: Readonly<Record<ClassId, ItemId>> = {
-  warbound: "tideworn_sabre",
-  pathfinder: "whisperbranch_bow",
-  runesmith: "emberglyph_staff",
-  lifewarden: "wellspring_scepter",
-  oathweaver: "duskneedle_dagger",
+  warrior: "tideworn_sabre",
+  mage: "emberglyph_staff",
 };
 
 export const STARTER_ARMOR_ITEM_IDS = [
@@ -1563,7 +1560,7 @@ export const consumableEffectSchema = z.discriminatedUnion("kind", [
   }),
   z.object({
     kind: z.literal("return"),
-    destinationId: z.literal("silent_wellspring_vale"),
+    destinationId: z.literal("dawnmere_crossing"),
     castTimeMs: z.number().int().min(1_000).max(60_000),
   }),
 ]);

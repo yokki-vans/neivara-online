@@ -5,13 +5,63 @@ import type {
   DerivedCharacterStats,
   EquipmentLoadout,
   EquipmentSlot,
+  GenderId,
   InventoryView,
   QuestProgress,
   RaceId,
 } from "@neivara/shared";
+import { normalizeCharacterSummary } from "./contentCompatibility";
 
 const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
-export const API_URL = (configuredApiUrl || "http://localhost:3001").replace(/\/$/, "");
+
+function isLoopbackHostname(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "[::1]" || /^127(?:\.\d{1,3}){3}$/u.test(hostname);
+}
+
+function normalizeApiOrigin(value: string, production: boolean, name: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(value.trim());
+  } catch {
+    throw new Error(`${name} должен быть origin-only HTTP(S) URL`);
+  }
+  if (
+    (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+    parsed.username ||
+    parsed.password ||
+    parsed.pathname !== "/" ||
+    parsed.search ||
+    parsed.hash
+  ) {
+    throw new Error(`${name} должен быть origin-only HTTP(S) URL`);
+  }
+  if (production && parsed.protocol !== "https:" && !isLoopbackHostname(parsed.hostname)) {
+    throw new Error(`${name} должен использовать HTTPS в production`);
+  }
+  return parsed.origin;
+}
+
+export function resolveApiUrl(
+  configured: string | undefined,
+  production: boolean,
+  browserOrigin: string | undefined,
+): string {
+  const explicit = configured?.trim();
+  if (explicit) return normalizeApiOrigin(explicit, production, "VITE_API_URL");
+  if (production) {
+    if (!browserOrigin) {
+      throw new Error("Browser origin is required for the unified production service");
+    }
+    return normalizeApiOrigin(browserOrigin, true, "Browser origin");
+  }
+  return "http://localhost:3001";
+}
+
+export const API_URL = resolveApiUrl(
+  configuredApiUrl,
+  import.meta.env.PROD,
+  typeof window === "undefined" ? undefined : window.location.origin,
+);
 
 export class ApiError extends Error {
   constructor(
@@ -87,17 +137,19 @@ export const api = {
     });
   },
   listCharacters(token: string) {
-    return request<{ characters: CharacterSummary[] }>("/v1/characters", {}, token);
+    return request<{ characters: CharacterSummary[] }>("/v1/characters", {}, token).then(
+      ({ characters }) => ({ characters: characters.map(normalizeCharacterSummary) }),
+    );
   },
   createCharacter(
     token: string,
-    input: { name: string; race: RaceId; classId: ClassId },
+    input: { name: string; race: RaceId; gender: GenderId; classId: ClassId },
   ) {
     return request<{ character: CharacterSummary }>(
       "/v1/characters",
       { method: "POST", body: JSON.stringify(input) },
       token,
-    );
+    ).then(({ character }) => ({ character: normalizeCharacterSummary(character) }));
   },
   getInventory(token: string, characterId: string) {
     return request<InventoryApiResponse>(
