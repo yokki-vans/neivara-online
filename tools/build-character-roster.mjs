@@ -15,18 +15,7 @@ if (!blender) {
   throw new Error("Blender 4.x was not found. Set BLENDER_BIN to the Blender executable.");
 }
 
-const output = resolve(root, "apps/client/public/assets/models");
-const script = resolve(root, "tools/generate_3d_assets.py");
 const result = spawnSync(
-  blender,
-  ["--background", "--factory-startup", "--python", script, "--", "--output", output],
-  { cwd: root, stdio: "inherit", env: { ...process.env, PYTHONHASHSEED: "0" } },
-);
-
-if (result.error) throw result.error;
-if (result.status !== 0) process.exit(result.status ?? 1);
-
-const rosterResult = spawnSync(
   blender,
   [
     "--background",
@@ -35,12 +24,12 @@ const rosterResult = spawnSync(
     resolve(root, "tools/build_character_roster.py"),
     "--",
     "--output",
-    output,
+    resolve(root, "apps/client/public/assets/models"),
     "--source",
     resolve(root, "third_party/kaykit/adventurers"),
   ],
   { cwd: root, stdio: "inherit", env: { ...process.env, PYTHONHASHSEED: "0" } },
 );
 
-if (rosterResult.error) throw rosterResult.error;
-if (rosterResult.status !== 0) process.exit(rosterResult.status ?? 1);
+if (result.error) throw result.error;
+if (result.status !== 0) process.exit(result.status ?? 1);

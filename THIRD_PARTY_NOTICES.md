@@ -36,3 +36,20 @@ Direct runtime and build dependencies inspected on 2026-07-10:
 | zod | 4.4.3 | MIT |
 
 License texts are distributed inside the corresponding npm packages and linked from their package metadata. Before a commercial release, regenerate the SBOM, review every transitive component and preserve any package-specific NOTICE files required by Apache-2.0 or other licenses.
+
+## Third-party assets
+
+### KayKit Adventurers 1.0
+
+- Creator: Kay Lousberg
+- Upstream: https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0
+- License: Creative Commons Zero 1.0 Universal (CC0 1.0)
+- Local license: `third_party/kaykit/adventurers/LICENSE.txt`
+
+Neivara uses modified portions of the character topology, rigs, animations,
+clothing and equipment. The shipped runtime roster is rebuilt in Blender with
+only six gameplay clips, selected class equipment, Neivara race palettes and
+proportions, plus original race-signature meshes.
+
+CC0 does not require attribution. This notice is retained voluntarily for clear
+provenance and reproducible compliance review.

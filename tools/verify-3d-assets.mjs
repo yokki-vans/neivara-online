@@ -12,6 +12,12 @@ const EXPECTED_GENDERS = ["male", "female"];
 const EXPECTED_ARCHETYPES = ["warrior", "mage"];
 const EXPECTED_HUMANOID_CLIPS = ["attack", "cast", "death", "hit", "idle", "run"];
 const EXPECTED_MONSTER_CLIPS = ["attack", "death", "hit", "idle", "run"];
+const KAYKIT_SOURCE_HASHES = {
+  Barbarian: "cefc311a0e10c7858b6141f5ada7e33268727564fb8ac1347aab97d000669cc6",
+  Knight: "60428e3abc09ba83e595d256e3af8c5c976b46cdae599f0802fc82b4a3445168",
+  Mage: "cf898585da33fab50c724d31605fb931eb2912e6d2280092141e98ca81ad507d",
+  Rogue: "e825437cd4d2ee9c1960b517a74a69101e33eb409ae7fa8cedc7134a998fbb7d",
+};
 
 function invariant(condition, message) {
   if (!condition) throw new Error(message);
@@ -55,12 +61,18 @@ function glbStats(document) {
 }
 
 invariant(manifest.version === "1.0.0", "Unexpected 3D manifest version");
-invariant(manifest.generator === "tools/generate_3d_assets.py", "Manifest must name the deterministic generator");
+invariant(
+  manifest.generator === "tools/generate_3d_assets.py + tools/build_character_roster.py",
+  "Manifest must name both deterministic Blender generators",
+);
 invariant(manifest.seed === 7012026, "Generator seed changed without a manifest version bump");
 invariant(
-  manifest.license === "Proprietary project-original clean-room assets; repository LICENSE applies",
-  "3D manifest must use the repository's unambiguous proprietary license",
+  manifest.license === "Mixed: project-original assets and KayKit Adventurers 1.0 (CC0 1.0)",
+  "3D manifest must declare its mixed project-original and CC0 provenance",
 );
+invariant(manifest.sources?.length === 1, "3D manifest must declare the external humanoid source");
+invariant(manifest.sources[0].name === "KayKit Adventurers 1.0", "Unexpected humanoid source");
+invariant(manifest.sources[0].license === "CC0 1.0 Universal", "KayKit source must remain CC0");
 invariant(Array.isArray(manifest.assets), "Manifest assets must be an array");
 
 const ids = new Set();
@@ -99,9 +111,10 @@ for (const asset of manifest.assets) {
     invariant(EXPECTED_GENDERS.includes(asset.gender), `${asset.id}: unsupported gender`);
     invariant(EXPECTED_ARCHETYPES.includes(asset.archetype), `${asset.id}: unsupported archetype`);
     humanoidCombinations.add(`${asset.race}/${asset.gender}/${asset.archetype}`);
-    invariant(actual.meshes >= 60, `${asset.id}: humanoid lost modeled components`);
-    invariant(actual.triangles >= 9_000, `${asset.id}: humanoid geometry is below the authored-detail floor`);
-    invariant(actual.triangles <= 15_000, `${asset.id}: humanoid exceeds the browser topology budget`);
+    invariant(asset.source === "KayKit Adventurers 1.0 (CC0), modified", `${asset.id}: source provenance is missing`);
+    invariant(actual.meshes >= 8, `${asset.id}: humanoid lost modeled body/equipment components`);
+    invariant(actual.triangles >= 4_500, `${asset.id}: humanoid geometry is below the authored-detail floor`);
+    invariant(actual.triangles <= 7_500, `${asset.id}: humanoid exceeds the browser topology budget`);
     invariant(actual.skins >= 1, `${asset.id}: humanoid must be skinned`);
     invariant((document.nodes?.length ?? 0) > actual.meshes, `${asset.id}: humanoid rig hierarchy is missing`);
     invariant(actual.embeddedTextures >= 1, `${asset.id}: humanoid must embed its generated outfit texture`);
@@ -143,9 +156,18 @@ for (const race of EXPECTED_RACES) {
       const path = resolve(modelRoot, "textures", `${race}_${gender}_${archetype}.png`);
       const png = await readFile(path);
       invariant(png.toString("hex", 0, 8) === "89504e470d0a1a0a", `Invalid texture PNG: ${path}`);
-      invariant(png.readUInt32BE(16) === 128 && png.readUInt32BE(20) === 128, `Texture must be 128x128: ${path}`);
+      invariant(png.readUInt32BE(16) === 256 && png.readUInt32BE(20) === 256, `Texture must be 256x256: ${path}`);
     }
   }
 }
+
+const kayKitRoot = resolve(root, "third_party", "kaykit", "adventurers");
+for (const [name, expectedHash] of Object.entries(KAYKIT_SOURCE_HASHES)) {
+  const source = await readFile(resolve(kayKitRoot, `${name}.glb`));
+  const actualHash = createHash("sha256").update(source).digest("hex");
+  invariant(actualHash === expectedHash, `Vendored KayKit source changed unexpectedly: ${name}.glb`);
+}
+const kayKitLicense = await readFile(resolve(kayKitRoot, "LICENSE.txt"), "utf8");
+invariant(kayKitLicense.includes("Creative Commons Zero, CC0"), "Vendored KayKit CC0 license is missing");
 
 console.log(JSON.stringify({ ok: true, manifestVersion: manifest.version, counts, totalBytes, totalTriangles }, null, 2));

@@ -1,10 +1,10 @@
 # Истоки Нейвары
 
-Оригинальная браузерная 3D MMORPG в духе классических target-based fantasy MMO. Проект использует собственный мир, персонажей, тексты, интерфейс, модели и графические ресурсы; материалы Lineage 2 не входят в репозиторий и не требуются для запуска.
+Браузерная 3D MMORPG в духе классических target-based fantasy MMO. Проект использует собственный мир, персонажей, тексты и интерфейс, а также открытые ассеты только с проверенной лицензией и зафиксированным происхождением. Материалы Lineage 2 не входят в репозиторий и не требуются для запуска.
 
-> **Статус 0.3.0:** production-oriented vertical slice и публичный технический preview. Это играбельная основа с production-практиками, но не полноценная production MMO и не AAA-игра.
+> **Статус 0.3.1:** production-oriented vertical slice и публичный технический preview. Это играбельная основа с production-практиками, но не полноценная production MMO и не AAA-игра.
 
-## Vertical slice 0.3.0
+## Vertical slice 0.3.1
 
 - пять рас: люди, светлые эльфы, тёмные эльфы, гномы и орки;
 - мужской и женский варианты, классы Воин и Маг — 20 игровых 3D-вариантов `5 × 2 × 2`;
@@ -21,7 +21,7 @@
 
 ## Что ещё не делает проект полноценной MMO
 
-В 0.3.0 нет требуемой для коммерческого MMO ширины контента и эксплуатации: party/friends/trade/guild, подземелий и рейдов, большого набора квестов и умений, AOI/zone workers, длительного массового soak-теста, полного moderation/live-ops контура и финальной ручной полировки всех ассетов. Проверяемые критерии перечислены в [production readiness](docs/PRODUCTION_READINESS.md).
+В 0.3.1 нет требуемой для коммерческого MMO ширины контента и эксплуатации: party/friends/trade/guild, подземелий и рейдов, большого набора квестов и умений, AOI/zone workers, длительного массового soak-теста и полного moderation/live-ops контура. Проверяемые критерии перечислены в [production readiness](docs/PRODUCTION_READINESS.md).
 
 ## Локальный запуск
 
@@ -64,4 +64,4 @@ API_URL=https://authentic-expression-production-bdc5.up.railway.app npm run smok
 
 Единая production-точка: [authentic-expression-production-bdc5.up.railway.app](https://authentic-expression-production-bdc5.up.railway.app/).
 
-Документация: [план](docs/PROJECT_PLAN.md), [release 0.3.0](docs/releases/0.3.0.md), [production gates](docs/PRODUCTION_READINESS.md), [архитектура](docs/ARCHITECTURE.md), [operations runbook](docs/OPERATIONS.md), [дизайн мира](docs/GAME_DESIGN.md), [3D pipeline](docs/art/3D_ASSET_PIPELINE.md), [art direction](docs/art/ART_DIRECTION.md) и [политика оригинальности](docs/ORIGINALITY_POLICY.md).
+Документация: [план](docs/PROJECT_PLAN.md), [release 0.3.1](docs/releases/0.3.1.md), [production gates](docs/PRODUCTION_READINESS.md), [архитектура](docs/ARCHITECTURE.md), [operations runbook](docs/OPERATIONS.md), [дизайн мира](docs/GAME_DESIGN.md), [3D pipeline](docs/art/3D_ASSET_PIPELINE.md), [art direction](docs/art/ART_DIRECTION.md), [политика оригинальности](docs/ORIGINALITY_POLICY.md) и [уведомления о сторонних ассетах](THIRD_PARTY_NOTICES.md).

@@ -1,8 +1,8 @@
 {
   "version": "1.0.0",
-  "generator": "tools/generate_3d_assets.py",
+  "generator": "tools/generate_3d_assets.py + tools/build_character_roster.py",
   "seed": 7012026,
-  "license": "Proprietary project-original clean-room assets; repository LICENSE applies",
+  "license": "Mixed: project-original assets and KayKit Adventurers 1.0 (CC0 1.0)",
   "coordinateSystem": "glTF 2.0, metres, Y-up at runtime",
   "animationContract": {
     "humanoid": [
@@ -30,19 +30,20 @@
       "archetype": "warrior",
       "url": "./humanoids/human/male-warrior.glb",
       "scale": 1.0,
+      "source": "KayKit Adventurers 1.0 (CC0), modified",
       "stats": {
-        "bytes": 501520,
-        "sha256": "bcc83eb0e8de9f18e087dfc4fd3210cacb0446727707842a2906bdf8ecb8917b",
-        "meshes": 65,
-        "triangles": 11924,
+        "bytes": 535728,
+        "sha256": "7ba2a4c6124a7ca58baab711f8be76a79aee6eec52e086a63f54f4cd3f2c2af0",
+        "meshes": 10,
+        "triangles": 5274,
         "skins": 1,
         "animations": [
-          "attack",
           "cast",
-          "death",
-          "hit",
+          "run",
           "idle",
-          "run"
+          "hit",
+          "death",
+          "attack"
         ],
         "embeddedTextures": 1
       }
@@ -55,19 +56,20 @@
       "archetype": "mage",
       "url": "./humanoids/human/male-mage.glb",
       "scale": 1.0,
+      "source": "KayKit Adventurers 1.0 (CC0), modified",
       "stats": {
-        "bytes": 508076,
-        "sha256": "16cb2f14dadb0a900bbe75dc70f9ff758bbbb84bef7e0c2781c0c8e546001d8d",
-        "meshes": 65,
-        "triangles": 11990,
+        "bytes": 516152,
+        "sha256": "8f8d048d15257976667f5421e9bdbc185e4a332fe2319a38d95eeb09981d5e75",
+        "meshes": 10,
+        "triangles": 4951,
         "skins": 1,
         "animations": [
           "attack",
           "cast",
-          "death",
-          "hit",
+          "run",
           "idle",
-          "run"
+          "hit",
+          "death"
         ],
         "embeddedTextures": 1
       }
@@ -80,19 +82,20 @@
       "archetype": "warrior",
       "url": "./humanoids/human/female-warrior.glb",
       "scale": 1.0,
+      "source": "KayKit Adventurers 1.0 (CC0), modified",
       "stats": {
-        "bytes": 503080,
-        "sha256": "c8e9dfc0bf6574f34a69b0d603626be2ae3a0c9c09a7a994613945403967715e",
-        "meshes": 65,
-        "triangles": 11972,
+        "bytes": 503768,
+        "sha256": "6b964e8e39bfea43c80462fec1b102c08d89832918d10caf60f86303040898f8",
+        "meshes": 9,
+        "triangles": 4691,
         "skins": 1,
         "animations": [
-          "attack",
           "cast",
-          "death",
-          "hit",
+          "run",
           "idle",
-          "run"
+          "hit",
+          "attack",
+          "death"
         ],
         "embeddedTextures": 1
       }
@@ -105,21 +108,22 @@
       "archetype": "mage",
       "url": "./humanoids/human/female-mage.glb",
       "scale": 1.0,
+      "source": "KayKit Adventurers 1.0 (CC0), modified",
       "stats": {
-        "bytes": 509636,
-        "sha256": "6b8f32e5eeb6ef7f8290dc9bf400a791e6180af4e6e4943d0deead919923e5da",
-        "meshes": 65,
-        "triangles": 12038,
+        "bytes": 514696,
+        "sha256": "bb7d5a01b6a08677a7df3ca2da168592e7991685de184cd106961dff9edcd5e6",
+        "meshes": 9,
+        "triangles": 4789,
         "skins": 1,
         "animations": [
           "attack",
           "cast",
-          "death",
-          "hit",
+          "run",
           "idle",
-          "run"
+          "hit",
+          "death"
         ],
-        "embeddedTextures": 1
+        "embeddedTextures": 2
       }
     },
     {
@@ -130,19 +134,20 @@
       "archetype": "warrior",
       "url": "./humanoids/light_elf/male-warrior.glb",
       "scale": 1.0,
+      "source": "KayKit Adventurers 1.0 (CC0), modified",
       "stats": {
-        "bytes": 503552,
-        "sha256": "7d646cd7fb01870d42b68ce0142b3bc4cf7f9f2f37330ca078114fddf19cc8c7",
-        "meshes": 65,
-        "triangles": 11956,
+        "bytes": 539148,
+        "sha256": "7b835cd72f0665c07f5bb87e448ff1f8b52d6881ae825f01c612dfa75eb11446",
+        "meshes": 11,
+        "triangles": 5290,
         "skins": 1,
         "animations": [
-          "attack",
           "cast",
-          "death",
-          "hit",
+          "run",
           "idle",
-          "run"
+          "hit",
+          "death",
+          "attack"
         ],
         "embeddedTextures": 1
       }
@@ -155,19 +160,20 @@
       "archetype": "mage",
       "url": "./humanoids/light_elf/male-mage.glb",
       "scale": 1.0,
+      "source": "KayKit Adventurers 1.0 (CC0), modified",
       "stats": {
-        "bytes": 506544,
-        "sha256": "c41ee762c955eee8588c0dad5fb7b6212b7e696ff5109e4d24cd2f7e073caaee",
-        "meshes": 65,
-        "triangles": 11926,
+        "bytes": 519656,
+        "sha256": "562109748fedd3206b8f356ee1a4b8a8e22604bb0996a193185e4eb6411fda92",
+        "meshes": 11,
+        "triangles": 4967,
         "skins": 1,
         "animations": [
           "attack",
           "cast",
-          "death",
-          "hit",
+          "run",
           "idle",
-          "run"
+          "hit",
+          "death"
         ],
         "embeddedTextures": 1
       }
@@ -180,19 +186,20 @@
       "archetype": "warrior",
       "url": "./humanoids/light_elf/female-warrior.glb",
       "scale": 1.0,
+      "source": "KayKit Adventurers 1.0 (CC0), modified",
       "stats": {
-        "bytes": 503556,
-        "sha256": "e97130c171e8a3ce59bea2d81e6d4deff539505face2f550f3f60cabaf161fb9",
-        "meshes": 65,
-        "triangles": 11956,
+        "bytes": 507196,
+        "sha256": "6c6a55f9b5fe2a99d3b39dfc43cc6d61b49e1f6f0c3deb60365102e87462dc32",
+        "meshes": 10,
+        "triangles": 4707,
         "skins": 1,
         "animations": [
-          "attack",
           "cast",
-          "death",
-          "hit",
+          "run",
           "idle",
-          "run"
+          "hit",
+          "attack",
+          "death"
         ],
         "embeddedTextures": 1
       }
@@ -205,21 +212,22 @@
       "archetype": "mage",
       "url": "./humanoids/light_elf/female-mage.glb",
       "scale": 1.0,
+      "source": "KayKit Adventurers 1.0 (CC0), modified",
       "stats": {
-        "bytes": 505244,
-        "sha256": "3c9bc48be6aeb142f6862b6a654e6f66d5d2111322d8342e959570af0dec0da5",
-        "meshes": 65,
-        "triangles": 11926,
+        "bytes": 518112,
+        "sha256": "0127f9e5e45a5a6c048d5a63b0b75d652f7306dbe14a2f237786ba934c35ee54",
+        "meshes": 10,
+        "triangles": 4805,
         "skins": 1,
         "animations": [
           "attack",
           "cast",
-          "death",
-          "hit",
+          "run",
           "idle",
-          "run"
+          "hit",
+          "death"
         ],
-        "embeddedTextures": 1
+        "embeddedTextures": 2
       }
     },
     {
@@ -230,19 +238,20 @@
       "archetype": "warrior",
       "url": "./humanoids/dark_elf/male-warrior.glb",
       "scale": 1.0,
+      "source": "KayKit Adventurers 1.0 (CC0), modified",
       "stats": {
-        "bytes": 504724,
-        "sha256": "7fe6ec506afa4e5daa6d8e39120916f0f86734b5d453917a70c140c1af28865f",
-        "meshes": 65,
-        "triangles": 12020,
+        "bytes": 539996,
+        "sha256": "85dced353bb2c257bc1b4ad587ddbc8e52fb04433894a4bca89180b67e7ccaa9",
+        "meshes": 11,
+        "triangles": 5290,
         "skins": 1,
         "animations": [
-          "attack",
           "cast",
-          "death",
-          "hit",
+          "run",
           "idle",
-          "run"
+          "hit",
+          "death",
+          "attack"
         ],
         "embeddedTextures": 1
       }
@@ -255,19 +264,20 @@
       "archetype": "mage",
       "url": "./humanoids/dark_elf/male-mage.glb",
       "scale": 1.0,
+      "source": "KayKit Adventurers 1.0 (CC0), modified",
       "stats": {
-        "bytes": 509536,
-        "sha256": "a6c9ab2f3ccd85204b01db75eaf19f5334dff711fc518772dfb314cb7468d711",
-        "meshes": 65,
-        "triangles": 12022,
+        "bytes": 520528,
+        "sha256": "bd1f3a55a9f47fe7f960f54cc35363577014007bf4445841f9c8ef817c28f5d0",
+        "meshes": 11,
+        "triangles": 4967,
         "skins": 1,
         "animations": [
           "attack",
           "cast",
-          "death",
-          "hit",
+          "run",
           "idle",
-          "run"
+          "hit",
+          "death"
         ],
         "embeddedTextures": 1
       }
@@ -280,19 +290,20 @@
       "archetype": "warrior",
       "url": "./humanoids/dark_elf/female-warrior.glb",
       "scale": 1.0,
+      "source": "KayKit Adventurers 1.0 (CC0), modified",
       "stats": {
-        "bytes": 503432,
-        "sha256": "17db9b741f2903c5f65f09dbcfa769caa57e56a32208ccfa5740de7643b71031",
-        "meshes": 65,
-        "triangles": 12020,
+        "bytes": 508028,
+        "sha256": "1989507f4be7e2ed5301533b60eedced7c682fb7f3c1d9f33e615a17f5ccabea",
+        "meshes": 10,
+        "triangles": 4707,
         "skins": 1,
         "animations": [
-          "attack",
           "cast",
-          "death",
-          "hit",
+          "run",
           "idle",
-          "run"
+          "hit",
+          "attack",
+          "death"
         ],
         "embeddedTextures": 1
       }
@@ -305,21 +316,22 @@
       "archetype": "mage",
       "url": "./humanoids/dark_elf/female-mage.glb",
       "scale": 1.0,
+      "source": "KayKit Adventurers 1.0 (CC0), modified",
       "stats": {
-        "bytes": 508244,
-        "sha256": "f216a3002b6a8774392ca1d92131199fb42e99b12ae0e725716e3223b0f2f8a1",
-        "meshes": 65,
-        "triangles": 12022,
+        "bytes": 518984,
+        "sha256": "3f70dfc28152a831640c423977ce0fb6a25cc8ce62c2e13da7441269c10a38c2",
+        "meshes": 10,
+        "triangles": 4805,
         "skins": 1,
         "animations": [
           "attack",
           "cast",
-          "death",
-          "hit",
+          "run",
           "idle",
-          "run"
+          "hit",
+          "death"
         ],
-        "embeddedTextures": 1
+        "embeddedTextures": 2
       }
     },
     {
@@ -330,19 +342,20 @@
       "archetype": "warrior",
       "url": "./humanoids/dwarf/male-warrior.glb",
       "scale": 1.0,
+      "source": "KayKit Adventurers 1.0 (CC0), modified",
       "stats": {
-        "bytes": 521108,
-        "sha256": "c4f4d0a29c88930e2f2379d2cdeb8c332bbe181fce055e31fe538030796b8c01",
-        "meshes": 68,
-        "triangles": 12408,
+        "bytes": 517532,
+        "sha256": "c4ccf2288be828657cb7e26edc1d41d8f53f4a8d0eb79f1308253d060be1a5de",
+        "meshes": 10,
+        "triangles": 5335,
         "skins": 1,
         "animations": [
-          "attack",
           "cast",
-          "death",
-          "hit",
+          "run",
           "idle",
-          "run"
+          "hit",
+          "death",
+          "attack"
         ],
         "embeddedTextures": 1
       }
@@ -355,19 +368,20 @@
       "archetype": "mage",
       "url": "./humanoids/dwarf/male-mage.glb",
       "scale": 1.0,
+      "source": "KayKit Adventurers 1.0 (CC0), modified",
       "stats": {
-        "bytes": 525264,
-        "sha256": "bdee3701cdc6888238a942207ef79f0581fc58f92ce2341c99e07ab655299db4",
-        "meshes": 68,
-        "triangles": 12426,
+        "bytes": 516712,
+        "sha256": "8577c7af967dc6fb5bcd21b4df71621318b96f4f3daa21bd86e2762264c62fb5",
+        "meshes": 10,
+        "triangles": 4951,
         "skins": 1,
         "animations": [
           "attack",
           "cast",
-          "death",
-          "hit",
+          "run",
           "idle",
-          "run"
+          "hit",
+          "death"
         ],
         "embeddedTextures": 1
       }
@@ -380,19 +394,20 @@
       "archetype": "warrior",
       "url": "./humanoids/dwarf/female-warrior.glb",
       "scale": 1.0,
+      "source": "KayKit Adventurers 1.0 (CC0), modified",
       "stats": {
-        "bytes": 514472,
-        "sha256": "7fa83c4857e259c487de63bebc976592e1cc011f3ce85c5230694fab112b402d",
-        "meshes": 67,
-        "triangles": 12280,
+        "bytes": 504260,
+        "sha256": "4002f952dbee5dbc60e4c51987cc86eef3f007f7fe0d213053c8c24fc742280d",
+        "meshes": 9,
+        "triangles": 4691,
         "skins": 1,
         "animations": [
-          "attack",
           "cast",
-          "death",
-          "hit",
+          "run",
           "idle",
-          "run"
+          "hit",
+          "attack",
+          "death"
         ],
         "embeddedTextures": 1
       }
@@ -405,21 +420,22 @@
       "archetype": "mage",
       "url": "./humanoids/dwarf/female-mage.glb",
       "scale": 1.0,
+      "source": "KayKit Adventurers 1.0 (CC0), modified",
       "stats": {
-        "bytes": 518632,
-        "sha256": "3c1ba9e3a2a86358a59314342b9e189fb202051f242709f86fe90cbdb5c4f0b5",
-        "meshes": 67,
-        "triangles": 12298,
+        "bytes": 515204,
+        "sha256": "65a1389a7c64102b3b1635297bdb184409318e884ab2d57428766f2de21bbb52",
+        "meshes": 9,
+        "triangles": 4789,
         "skins": 1,
         "animations": [
           "attack",
           "cast",
-          "death",
-          "hit",
+          "run",
           "idle",
-          "run"
+          "hit",
+          "death"
         ],
-        "embeddedTextures": 1
+        "embeddedTextures": 2
       }
     },
     {
@@ -430,19 +446,20 @@
       "archetype": "warrior",
       "url": "./humanoids/orc/male-warrior.glb",
       "scale": 1.0,
+      "source": "KayKit Adventurers 1.0 (CC0), modified",
       "stats": {
-        "bytes": 492400,
-        "sha256": "943c8c4b1324c2605606f7d893fdddee80b11dd370c243d8e99d5492c6a72f32",
-        "meshes": 64,
-        "triangles": 11640,
+        "bytes": 520516,
+        "sha256": "9639db1272f739615db307935295cdde123f0a4e3ac6284e0400c9eb4ab45110",
+        "meshes": 11,
+        "triangles": 5347,
         "skins": 1,
         "animations": [
-          "attack",
           "cast",
-          "death",
-          "hit",
+          "run",
           "idle",
-          "run"
+          "hit",
+          "death",
+          "attack"
         ],
         "embeddedTextures": 1
       }
@@ -455,19 +472,20 @@
       "archetype": "mage",
       "url": "./humanoids/orc/male-mage.glb",
       "scale": 1.0,
+      "source": "KayKit Adventurers 1.0 (CC0), modified",
       "stats": {
-        "bytes": 498096,
-        "sha256": "b62b6c0fcb6e094f7aa9688500f60bbc0f84164b249d28941fa130e6ff0f8a25",
-        "meshes": 64,
-        "triangles": 11722,
+        "bytes": 519772,
+        "sha256": "485bfb95599023a7cefdd6abc516407d317ff1f73090754b816abbfd574b6296",
+        "meshes": 11,
+        "triangles": 4963,
         "skins": 1,
         "animations": [
           "attack",
           "cast",
-          "death",
-          "hit",
+          "run",
           "idle",
-          "run"
+          "hit",
+          "death"
         ],
         "embeddedTextures": 1
       }
@@ -480,19 +498,20 @@
       "archetype": "warrior",
       "url": "./humanoids/orc/female-warrior.glb",
       "scale": 1.0,
+      "source": "KayKit Adventurers 1.0 (CC0), modified",
       "stats": {
-        "bytes": 492400,
-        "sha256": "df294ca5746eecf5c7e87449714ca862e1c7ef704b1d219bc0dcd40e26105892",
-        "meshes": 64,
-        "triangles": 11640,
+        "bytes": 507220,
+        "sha256": "f1684dd3fafc4b9b98c4225c9f72c0cf29968d35ad64418cb3a9008924116730",
+        "meshes": 10,
+        "triangles": 4703,
         "skins": 1,
         "animations": [
-          "attack",
           "cast",
-          "death",
-          "hit",
+          "run",
           "idle",
-          "run"
+          "hit",
+          "attack",
+          "death"
         ],
         "embeddedTextures": 1
       }
@@ -505,21 +524,22 @@
       "archetype": "mage",
       "url": "./humanoids/orc/female-mage.glb",
       "scale": 1.0,
+      "source": "KayKit Adventurers 1.0 (CC0), modified",
       "stats": {
-        "bytes": 498108,
-        "sha256": "71358430edb706d15c003a2de8ee0852db1d4cba546b209208149bce9091a987",
-        "meshes": 64,
-        "triangles": 11722,
+        "bytes": 518216,
+        "sha256": "090704e64700a776efe22ccda8ab5cb6f721db229a761f1126efb90d3865f10b",
+        "meshes": 10,
+        "triangles": 4801,
         "skins": 1,
         "animations": [
           "attack",
           "cast",
-          "death",
-          "hit",
+          "run",
           "idle",
-          "run"
+          "hit",
+          "death"
         ],
-        "embeddedTextures": 1
+        "embeddedTextures": 2
       }
     },
     {
@@ -767,6 +787,15 @@
         "animations": [],
         "embeddedTextures": 0
       }
+    }
+  ],
+  "sources": [
+    {
+      "name": "KayKit Adventurers 1.0",
+      "author": "Kay Lousberg",
+      "license": "CC0 1.0 Universal",
+      "url": "https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0",
+      "scope": "adapted humanoid topology, rigs, animations, clothing and equipment"
     }
   ]
 }
