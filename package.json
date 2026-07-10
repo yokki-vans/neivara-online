@@ -1,0 +1,34 @@
+{
+  "name": "neivara-online",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build:shared": "npm run build --workspace @neivara/shared",
+    "build:server": "npm run build:shared && npm run build --workspace @neivara/server",
+    "build:client": "npm run build:shared && npm run build --workspace @neivara/client",
+    "build": "npm run build:shared && npm run build --workspace @neivara/server && npm run build --workspace @neivara/client",
+    "dev": "npm run build:shared && concurrently -n server,client -c magenta,cyan \"npm run dev --workspace @neivara/server\" \"npm run dev --workspace @neivara/client\"",
+    "test": "npm run build:shared && npm run test --workspaces --if-present",
+    "smoke": "node tools/smoke-multiplayer.mjs",
+    "typecheck": "npm run build:shared && npm run typecheck --workspace @neivara/server && npm run typecheck --workspace @neivara/client",
+    "lint": "eslint .",
+    "start": "npm run start --workspace @neivara/server"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "concurrently": "^10.0.3",
+    "eslint": "^10.6.0",
+    "globals": "^17.7.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.63.0",
+    "vitest": "^4.1.10"
+  }
+}
