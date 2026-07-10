@@ -1,4 +1,4 @@
-FROM node:22-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -13,7 +13,7 @@ COPY apps/server apps/server
 COPY apps/client apps/client
 RUN npm run build
 
-FROM node:22-alpine AS runtime-deps
+FROM node:26-alpine AS runtime-deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/server/package.json apps/server/package.json
@@ -24,7 +24,7 @@ RUN npm ci --omit=dev \
     --include-workspace-root=false \
     && npm cache clean --force
 
-FROM node:22-alpine AS runtime
+FROM node:26-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 
