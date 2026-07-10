@@ -8,7 +8,13 @@ export { MemoryGameStore } from "./memory.js";
 
 export function createStore(config: AppConfig): GameStore {
   if (config.storageMode === "postgres") {
-    return new PostgresGameStore(config.databaseUrl!, config.databaseSsl, config.autoMigrate);
+    return new PostgresGameStore(
+      config.databaseUrl!,
+      config.databaseSsl,
+      config.autoMigrate,
+      undefined,
+      config.migrationLockTimeoutMs,
+    );
   }
   return new MemoryGameStore();
 }

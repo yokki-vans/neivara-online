@@ -10,7 +10,7 @@ Railway: modular monolith
       │
       ▼
 PostgreSQL
-  accounts / characters / inventory / quest progress
+  accounts / characters / item instances / equipment / economy ledger / quests
 ```
 
 ## Почему модульный монолит
@@ -35,7 +35,7 @@ Socket handshake содержит access token, characterId и `PROTOCOL_VERSION
 
 ## Данные
 
-PostgreSQL — единственный долговечный источник истины. Redis добавляется в alpha для одноразовых игровых билетов, presence и pub/sub, но не хранит каноническую экономику. Статические предметы, способности, NPC и квесты версионируются в репозитории и валидируются общей схемой.
+PostgreSQL — единственный долговечный источник истины. Экипировка хранится как уникальные item instances, а изменения валюты и предметов сопровождаются audit-friendly economy ledger. Redis добавляется в alpha для одноразовых игровых билетов, presence и pub/sub, но не хранит каноническую экономику. Статические предметы, способности, NPC и квесты версионируются в репозитории и валидируются общей схемой.
 
 ## Масштабирование
 

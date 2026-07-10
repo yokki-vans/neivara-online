@@ -8,6 +8,9 @@ import { SignJWT, jwtVerify } from "jose";
 
 const scrypt = promisify(scryptCallback);
 const KEY_LENGTH = 64;
+const DUMMY_PASSWORD_HASH = `scrypt:${Buffer.alloc(16).toString("base64url")}:${Buffer.alloc(
+  KEY_LENGTH,
+).toString("base64url")}`;
 
 export interface AccessClaims {
   accountId: string;
@@ -34,6 +37,15 @@ export async function verifyPassword(password: string, encoded: string): Promise
   }
 }
 
+/** Always performs scrypt so a missing username does not create a cheap timing oracle. */
+export async function verifyLoginPassword(
+  password: string,
+  encodedHash: string | null,
+): Promise<boolean> {
+  const valid = await verifyPassword(password, encodedHash ?? DUMMY_PASSWORD_HASH);
+  return encodedHash !== null && valid;
+}
+
 export class TokenService {
   private readonly key: Uint8Array;
 
@@ -56,6 +68,7 @@ export class TokenService {
     const { payload } = await jwtVerify(token, this.key, {
       issuer: "neivara-server",
       audience: "neivara-client",
+      algorithms: ["HS256"],
     });
 
     if (!payload.sub || typeof payload.username !== "string") {

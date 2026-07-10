@@ -1,6 +1,17 @@
-import type { AuthResponse, CharacterSummary, ClassId, RaceId } from "@neivara/shared";
+import type {
+  AuthResponse,
+  CharacterSummary,
+  ClassId,
+  DerivedCharacterStats,
+  EquipmentLoadout,
+  EquipmentSlot,
+  InventoryView,
+  QuestProgress,
+  RaceId,
+} from "@neivara/shared";
 
-export const API_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:3001").replace(/\/$/, "");
+const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
+export const API_URL = (configuredApiUrl || "http://localhost:3001").replace(/\/$/, "");
 
 export class ApiError extends Error {
   constructor(
@@ -18,10 +29,17 @@ async function request<T>(path: string, init: RequestInit = {}, token?: string):
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
   let response: Response;
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 15_000);
   try {
-    response = await fetch(`${API_URL}${path}`, { ...init, headers });
-  } catch {
+    response = await fetch(`${API_URL}${path}`, { ...init, headers, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new ApiError("Сервер не ответил вовремя. Повторите действие.", 0);
+    }
     throw new ApiError("Сервер недоступен. Проверьте адрес API и подключение.", 0);
+  } finally {
+    window.clearTimeout(timeout);
   }
 
   const body = (await response.json().catch(() => ({}))) as { message?: string };
@@ -29,6 +47,30 @@ async function request<T>(path: string, init: RequestInit = {}, token?: string):
     throw new ApiError(body.message ?? `Ошибка сервера (${response.status})`, response.status);
   }
   return body as T;
+}
+
+export interface InventoryApiResponse {
+  inventory: InventoryView;
+  equipment: EquipmentLoadout;
+  derivedStats: DerivedCharacterStats;
+  quest?: QuestProgress;
+}
+
+export interface UseItemApiResponse extends InventoryApiResponse {
+  effect: {
+    restoredHp: number;
+    restoredMp: number;
+  };
+}
+
+export interface EnhanceItemApiResponse extends InventoryApiResponse {
+  enhancement: {
+    success: boolean;
+    previousLevel: number;
+    enhancementLevel: number;
+    downgraded: boolean;
+    chanceBps: number;
+  };
 }
 
 export const api = {
@@ -54,6 +96,41 @@ export const api = {
     return request<{ character: CharacterSummary }>(
       "/v1/characters",
       { method: "POST", body: JSON.stringify(input) },
+      token,
+    );
+  },
+  getInventory(token: string, characterId: string) {
+    return request<InventoryApiResponse>(
+      `/v1/characters/${encodeURIComponent(characterId)}/inventory`,
+      {},
+      token,
+    );
+  },
+  equipItem(token: string, characterId: string, instanceId: string, slot?: EquipmentSlot) {
+    return request<InventoryApiResponse>(
+      `/v1/characters/${encodeURIComponent(characterId)}/inventory/${encodeURIComponent(instanceId)}/equip`,
+      { method: "POST", body: JSON.stringify(slot ? { slot } : {}) },
+      token,
+    );
+  },
+  unequipItem(token: string, characterId: string, slot: EquipmentSlot) {
+    return request<InventoryApiResponse>(
+      `/v1/characters/${encodeURIComponent(characterId)}/equipment/${encodeURIComponent(slot)}/unequip`,
+      { method: "POST", body: "{}" },
+      token,
+    );
+  },
+  useItem(token: string, characterId: string, instanceId: string, idempotencyKey: string) {
+    return request<UseItemApiResponse>(
+      `/v1/characters/${encodeURIComponent(characterId)}/inventory/${encodeURIComponent(instanceId)}/use`,
+      { method: "POST", body: "{}", headers: { "Idempotency-Key": idempotencyKey } },
+      token,
+    );
+  },
+  enhanceItem(token: string, characterId: string, instanceId: string, idempotencyKey: string) {
+    return request<EnhanceItemApiResponse>(
+      `/v1/characters/${encodeURIComponent(characterId)}/inventory/${encodeURIComponent(instanceId)}/enhance`,
+      { method: "POST", body: "{}", headers: { "Idempotency-Key": idempotencyKey } },
       token,
     );
   },

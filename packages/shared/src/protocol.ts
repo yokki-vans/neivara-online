@@ -1,4 +1,10 @@
-import type { AbilityId, ClassId, ItemId, RaceId } from "./content.js";
+import type { AbilityId, ClassId, RaceId } from "./content.js";
+import type {
+  DerivedCharacterStats,
+  EquipmentSlot,
+  InventoryView,
+  ItemId,
+} from "./items.js";
 
 export interface Vec3 {
   x: number;
@@ -57,6 +63,7 @@ export interface PlayerSnapshot {
   alive: boolean;
   pvpEnabled: boolean;
   targetId: string | null;
+  equipment: Partial<Record<EquipmentSlot, ItemId>>;
 }
 
 export interface MonsterSnapshot {
@@ -138,6 +145,15 @@ export interface CombatEvent {
   message: string;
 }
 
+export interface AbilityUseResult {
+  seq: number;
+  abilityId: AbilityId;
+  accepted: boolean;
+  serverTime: number;
+  cooldownReadyAt: number;
+  reason?: string;
+}
+
 export interface ChatMessage {
   id: string;
   at: number;
@@ -157,12 +173,15 @@ export interface SystemMessage {
 export interface InventoryUpdate {
   inventory: InventoryStack[];
   gold: number;
+  view?: InventoryView;
+  derivedStats?: DerivedCharacterStats;
 }
 
 export interface ServerToClientEvents {
   "world:ready": (payload: WorldReady) => void;
   "world:snapshot": (payload: WorldSnapshot) => void;
   "combat:event": (payload: CombatEvent) => void;
+  "combat:ability-result": (payload: AbilityUseResult) => void;
   "chat:message": (payload: ChatMessage) => void;
   "system:message": (payload: SystemMessage) => void;
   "inventory:update": (payload: InventoryUpdate) => void;
