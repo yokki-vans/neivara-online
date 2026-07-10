@@ -1,17 +1,23 @@
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import {
   ABILITIES,
   ITEMS,
   PROTOCOL_VERSION,
   getClass,
   levelFromTotalXp,
+  normalizeItemStats,
+  type AbilityUseResult,
   type AbilityId,
   type ChatMessage,
   type ClientToServerEvents,
   type CombatEvent,
+  type ConsumableEffect,
   type InterServerEvents,
   type InventoryStack,
+  type InventoryView,
   type ItemId,
+  type ItemStats,
+  type ItemStatBlock,
   type LootSnapshot,
   type MonsterSnapshot,
   type MovementInput,
@@ -25,7 +31,15 @@ import {
   type WorldSnapshot,
 } from "@neivara/shared";
 import type { Server, Socket } from "socket.io";
-import type { CharacterRecord, GameStore } from "./store/index.js";
+import { CharacterOperationQueue } from "./character-operation-queue.js";
+import { deriveCharacterStats, type DerivedCharacterStats } from "./character-stats.js";
+import {
+  IdempotencyConflictError,
+  inventoryStacks,
+  type CharacterRecord,
+  type GameStore,
+  type InventoryState,
+} from "./store/index.js";
 
 export type GameIo = Server<
   ClientToServerEvents,
@@ -44,14 +58,21 @@ interface RuntimePlayer extends PlayerSnapshot {
   socketId: string;
   accountId: string;
   inventory: InventoryStack[];
+  inventoryView: InventoryView;
+  equipmentStats: ItemStatBlock;
+  derivedStats: DerivedCharacterStats;
   quest: QuestProgress;
   input: MovementInput;
   lastProcessedInput: number;
   cooldowns: Map<AbilityId, number>;
   damageReductionUntil: number;
+  activeBuffs: Array<{ sourceItemId: ItemId; stats: ItemStats; expiresAt: number }>;
   respawnAt: number | null;
   lastPersistAt: number;
   lastChatAt: number;
+  /** Durable balance acknowledged by the store; gold may include unflushed world rewards. */
+  persistedGold: number;
+  pendingGoldFlush: { operationId: string; goldDelta: number } | null;
 }
 
 interface RuntimeMonster extends MonsterSnapshot {
@@ -64,7 +85,26 @@ interface RuntimeMonster extends MonsterSnapshot {
   lastAttackAt: number;
 }
 
-interface RuntimeLoot extends LootSnapshot {}
+interface RuntimeLoot extends LootSnapshot {
+  audit: {
+    sourceMonsterId: string;
+    sourceMonsterKind: RuntimeMonster["kind"];
+    sourceMonsterElite: boolean;
+    rareRoll: number;
+    rareChanceBps: number;
+    quantityRoll: number;
+    quantityBonusChanceBps: number;
+  };
+}
+
+interface RuntimeResumeState {
+  expiresAt: number;
+  cooldowns: Map<AbilityId, number>;
+  damageReductionUntil: number;
+  activeBuffs: RuntimePlayer["activeBuffs"];
+  alive: boolean;
+  respawnAt: number | null;
+}
 
 type DamageTarget =
   | { kind: "player"; value: RuntimePlayer }
@@ -73,6 +113,8 @@ type DamageTarget =
 const TICK_MS = 50;
 const SNAPSHOT_EVERY_TICKS = 2;
 const PERSIST_EVERY_MS = 10_000;
+const RESUME_TTL_MS = 2 * 60_000;
+const MAX_RESUME_STATES = 5_000;
 const WORLD_LIMIT = 48;
 const SPAWN: Vec3 = { x: 0, y: 0, z: 0 };
 const ARENA_CENTER = { x: 29, z: 27 };
@@ -92,14 +134,46 @@ function normalizedDirection(direction: { x: number; z: number }): { x: number; 
   return { x: direction.x / Math.max(1, length), z: direction.z / Math.max(1, length) };
 }
 
-function playerStats(classId: RuntimePlayer["classId"], level: number) {
-  const definition = getClass(classId);
-  return {
-    maxHp: definition.baseHp + (level - 1) * 14,
-    maxMp: definition.baseMp + (level - 1) * 9,
-    moveSpeed: definition.moveSpeed,
-    basicRange: definition.basicRange,
-  };
+function playerStats(player: RuntimePlayer, now = Date.now()) {
+  return deriveCharacterStats(
+    player.classId,
+    player.level,
+    effectiveItemStats(player, now),
+    player.inventoryView.equipment.main_hand?.itemId,
+  );
+}
+
+function effectiveItemStats(player: RuntimePlayer, now = Date.now()): ItemStatBlock {
+  const result = { ...player.equipmentStats };
+  for (const buff of player.activeBuffs) {
+    if (buff.expiresAt <= now) continue;
+    const stats = normalizeItemStats(buff.stats);
+    for (const key of Object.keys(result) as Array<keyof ItemStatBlock>) {
+      result[key] += stats[key];
+    }
+  }
+  return result;
+}
+
+function refreshDerivedStats(player: RuntimePlayer, now = Date.now()): void {
+  player.derivedStats = deriveCharacterStats(
+    player.classId,
+    player.level,
+    effectiveItemStats(player, now),
+    player.inventoryView.equipment.main_hand?.itemId,
+  );
+  player.maxHp = player.derivedStats.maxHp;
+  player.maxMp = player.derivedStats.maxMp;
+  player.hp = clamp(player.hp, 0, player.maxHp);
+  player.mp = clamp(player.mp, 0, player.maxMp);
+}
+
+function publicEquipment(inventory: InventoryView): PlayerSnapshot["equipment"] {
+  return Object.fromEntries(
+    Object.entries(inventory.equipment)
+      .filter((entry): entry is [string, NonNullable<(typeof entry)[1]>] => Boolean(entry[1]))
+      .map(([slot, item]) => [slot, item.itemId]),
+  ) as PlayerSnapshot["equipment"];
 }
 
 function publicPlayer(player: RuntimePlayer): PlayerSnapshot {
@@ -120,6 +194,7 @@ function publicPlayer(player: RuntimePlayer): PlayerSnapshot {
     alive: player.alive,
     pvpEnabled: player.pvpEnabled,
     targetId: player.targetId,
+    equipment: publicEquipment(player.inventoryView),
   };
 }
 
@@ -137,6 +212,19 @@ function publicMonster(monster: RuntimeMonster): MonsterSnapshot {
     elite: monster.elite,
     targetId: monster.targetId,
     respawnAt: monster.respawnAt,
+  };
+}
+
+function publicLoot(drop: RuntimeLoot): LootSnapshot {
+  return {
+    id: drop.id,
+    itemId: drop.itemId,
+    name: drop.name,
+    quantity: drop.quantity,
+    position: { ...drop.position },
+    ownerId: drop.ownerId,
+    publicAt: drop.publicAt,
+    expiresAt: drop.expiresAt,
   };
 }
 
@@ -177,12 +265,16 @@ export class GameWorld {
   private readonly socketToCharacter = new Map<string, string>();
   private readonly monsters = new Map<string, RuntimeMonster>();
   private readonly loot = new Map<string, RuntimeLoot>();
+  private readonly resumeStates = new Map<string, RuntimeResumeState>();
+  private readonly characterOperations = new CharacterOperationQueue();
   private timer: ReturnType<typeof setInterval> | null = null;
   private tickNumber = 0;
+  private stopping = false;
 
   constructor(
     private readonly io: GameIo,
     private readonly store: GameStore,
+    private readonly lootRoll: () => number = () => randomInt(10_000),
   ) {
     const spawns: Array<[number, number]> = [
       [-17, -8],
@@ -204,33 +296,63 @@ export class GameWorld {
 
   start(): void {
     if (this.timer) return;
+    this.stopping = false;
     this.timer = setInterval(() => this.tick(), TICK_MS);
     this.timer.unref?.();
   }
 
   async stop(): Promise<void> {
+    this.stopping = true;
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
-    await Promise.all([...this.players.values()].map((player) => this.persist(player)));
+    const results = await Promise.allSettled(
+      [...this.players.values()].map((player) => this.persist(player)),
+    );
+    await this.characterOperations.drain();
+    this.players.clear();
+    this.socketToCharacter.clear();
+    this.resumeStates.clear();
+    const failed = results.find(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    );
+    if (failed) throw failed.reason;
   }
 
   async join(socket: GameSocket, character: CharacterRecord): Promise<void> {
+    if (this.stopping) return;
+    await this.characterOperations.run(character.id, () => this.joinUnsafe(socket, character));
+  }
+
+  private async joinUnsafe(socket: GameSocket, character: CharacterRecord): Promise<void> {
     const existing = this.players.get(character.id);
     if (existing) {
-      await this.persist(existing);
+      await this.persistUnsafe(existing);
+      this.rememberResumeState(existing);
       this.players.delete(existing.id);
       this.socketToCharacter.delete(existing.socketId);
       this.io.sockets.sockets.get(existing.socketId)?.disconnect(true);
     }
 
-    const inventory = await this.store.getInventory(character.id);
+    character =
+      (await this.store.getCharacterForAccount(character.id, character.accountId)) ?? character;
+    const inventoryState = await this.store.getInventoryState(character.id);
+    const inventory = inventoryStacks(inventoryState.inventory.items);
     const quest = await this.store.getQuest(character.id);
-    const stats = playerStats(character.classId, character.level);
+    const stats = deriveCharacterStats(
+      character.classId,
+      character.level,
+      inventoryState.equipmentStats,
+      inventoryState.inventory.equipment.main_hand?.itemId,
+    );
     const savedPosition =
       Math.abs(character.position.x) <= WORLD_LIMIT && Math.abs(character.position.z) <= WORLD_LIMIT
         ? character.position
         : SPAWN;
-    const hp = character.hp > 0 ? clamp(character.hp, 1, stats.maxHp) : stats.maxHp;
+    if (this.stopping || socket.connected === false) return;
+    const resume = this.takeResumeState(character.id);
+    const alive = resume?.alive ?? character.hp > 0;
+    const hp = alive ? clamp(character.hp, 1, stats.maxHp) : 0;
+    const respawnAt = alive ? null : (resume?.respawnAt ?? Date.now() + 5_000);
 
     const player: RuntimePlayer = {
       id: character.id,
@@ -247,20 +369,28 @@ export class GameWorld {
       maxHp: stats.maxHp,
       mp: clamp(character.mp, 0, stats.maxMp),
       maxMp: stats.maxMp,
-      gold: character.gold,
-      alive: true,
+      gold: inventoryState.inventory.gold,
+      alive,
       pvpEnabled: this.isArena(savedPosition),
       targetId: null,
       inventory,
+      inventoryView: inventoryState.inventory,
+      equipmentStats: inventoryState.equipmentStats,
+      derivedStats: stats,
+      equipment: publicEquipment(inventoryState.inventory),
       quest,
       input: { seq: 0, direction: { x: 0, z: 0 }, facing: 0, sprint: false },
       lastProcessedInput: 0,
-      cooldowns: new Map(),
-      damageReductionUntil: 0,
-      respawnAt: null,
+      cooldowns: resume?.cooldowns ?? new Map(),
+      damageReductionUntil: resume?.damageReductionUntil ?? 0,
+      activeBuffs: resume?.activeBuffs ?? [],
+      respawnAt,
       lastPersistAt: Date.now(),
       lastChatAt: 0,
+      persistedGold: inventoryState.inventory.gold,
+      pendingGoldFlush: null,
     };
+    refreshDerivedStats(player);
     this.players.set(player.id, player);
     this.socketToCharacter.set(socket.id, player.id);
 
@@ -293,23 +423,32 @@ export class GameWorld {
   async leave(socketId: string): Promise<void> {
     const characterId = this.socketToCharacter.get(socketId);
     if (!characterId) return;
-    const player = this.players.get(characterId);
-    this.socketToCharacter.delete(socketId);
-    this.players.delete(characterId);
-    if (!player) return;
-
-    await this.persist(player);
+    let departedName: string | null = null;
+    await this.characterOperations.run(characterId, async () => {
+      const player = this.players.get(characterId);
+      if (!player || player.socketId !== socketId) {
+        this.socketToCharacter.delete(socketId);
+        return;
+      }
+      await this.persistUnsafe(player);
+      this.rememberResumeState(player);
+      this.socketToCharacter.delete(socketId);
+      this.players.delete(characterId);
+      departedName = player.name;
+    });
+    if (!departedName) return;
     this.broadcastChat({
       id: randomUUID(),
       at: Date.now(),
       senderId: null,
       senderName: "Мир",
-      text: `${player.name} покидает долину.`,
+      text: `${departedName} покидает долину.`,
       channel: "system",
     });
   }
 
   setInput(socketId: string, input: MovementInput): void {
+    if (this.stopping) return;
     const player = this.playerBySocket(socketId);
     if (!player || input.seq <= player.lastProcessedInput) return;
     player.input = {
@@ -319,6 +458,7 @@ export class GameWorld {
   }
 
   setTarget(socketId: string, targetId: string | null): void {
+    if (this.stopping) return;
     const player = this.playerBySocket(socketId);
     if (!player) return;
     if (targetId && !this.players.has(targetId) && !this.monsters.has(targetId)) return;
@@ -326,12 +466,18 @@ export class GameWorld {
   }
 
   useAbility(socketId: string, input: UseAbilityInput): void {
+    if (this.stopping) return;
     const player = this.playerBySocket(socketId);
-    if (!player || !player.alive) return;
+    if (!player) return;
+    if (!player.alive) {
+      this.emitAbilityResult(player, input, false, Date.now(), "Герой ожидает возвращения к Истоку.");
+      return;
+    }
     this.resolveAbility(player, input);
   }
 
   async pickup(socketId: string, lootId: string): Promise<void> {
+    if (this.stopping) return;
     const player = this.playerBySocket(socketId);
     const drop = this.loot.get(lootId);
     if (!player || !player.alive || !drop) return;
@@ -347,23 +493,30 @@ export class GameWorld {
 
     this.loot.delete(drop.id);
     try {
-      player.inventory = await this.store.addInventoryItem(
-        player.id,
-        drop.itemId,
-        drop.quantity,
-      );
-      this.io.to(player.socketId).emit("inventory:update", {
-        inventory: player.inventory,
-        gold: player.gold,
+      await this.runCharacterOperation(player.id, async () => {
+        player.inventory = await this.store.addInventoryItem(
+          player.id,
+          drop.itemId,
+          drop.quantity,
+          drop.audit,
+          drop.id,
+        );
+        const state = await this.store.getInventoryState(player.id);
+        this.applyInventoryState(player.id, state);
       });
       this.system(player, "success", `Получено: ${drop.name} ×${drop.quantity}.`);
     } catch (error) {
-      this.loot.set(drop.id, drop);
-      throw error;
+      if (error instanceof IdempotencyConflictError) {
+        this.system(player, "warning", "Эта добыча уже была получена.");
+      } else {
+        this.loot.set(drop.id, drop);
+        this.system(player, "error", "Не удалось переместить добычу в инвентарь.");
+      }
     }
   }
 
   chat(socketId: string, text: string): void {
+    if (this.stopping) return;
     const player = this.playerBySocket(socketId);
     if (!player) return;
     const now = Date.now();
@@ -380,6 +533,85 @@ export class GameWorld {
       text,
       channel: "local",
     });
+  }
+
+  async runCharacterOperation<T>(
+    characterId: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    return this.characterOperations.run(characterId, async () => {
+      const player = this.players.get(characterId);
+      if (player) await this.persistUnsafe(player);
+      return operation();
+    });
+  }
+
+  isCharacterOnline(characterId: string): boolean {
+    return !this.stopping && this.players.has(characterId);
+  }
+
+  /** Flushes an online character through the same FIFO used by REST and realtime mutations. */
+  async flushCharacter(characterId: string): Promise<void> {
+    const player = this.players.get(characterId);
+    if (player) await this.persist(player);
+  }
+
+  applyInventoryState(
+    characterId: string,
+    state: InventoryState,
+    vitalDeltas?: { hp: number; mp: number },
+  ): void {
+    const player = this.players.get(characterId);
+    if (!player) return;
+    const pendingWorldGold = player.gold - player.persistedGold;
+    player.persistedGold = state.inventory.gold;
+    player.gold = state.inventory.gold + pendingWorldGold;
+    state.inventory = { ...state.inventory, gold: player.gold };
+    player.inventoryView = state.inventory;
+    player.inventory = inventoryStacks(state.inventory.items);
+    player.equipmentStats = state.equipmentStats;
+    player.equipment = publicEquipment(state.inventory);
+    refreshDerivedStats(player);
+    player.hp = clamp(player.hp + (vitalDeltas?.hp ?? 0), 0, player.maxHp);
+    player.mp = clamp(player.mp + (vitalDeltas?.mp ?? 0), 0, player.maxMp);
+    this.emitInventoryUpdate(player);
+  }
+
+  mergeRuntimeInventoryState(characterId: string, state: InventoryState): void {
+    const player = this.players.get(characterId);
+    if (!player) return;
+    const pendingWorldGold = player.gold - player.persistedGold;
+    state.inventory = {
+      ...state.inventory,
+      gold: state.inventory.gold + pendingWorldGold,
+    };
+  }
+
+  applyConsumableEffect(
+    characterId: string,
+    sourceItemId: ItemId,
+    effect: ConsumableEffect,
+    effectExpiresAt: number | null,
+  ): void {
+    const player = this.players.get(characterId);
+    if (!player) return;
+    if (effect.kind === "buff") {
+      const expiresAt = effectExpiresAt ?? Date.now() + effect.durationMs;
+      const existing = player.activeBuffs.find((buff) => buff.sourceItemId === sourceItemId);
+      if (existing) {
+        existing.stats = effect.stats;
+        existing.expiresAt = Math.max(existing.expiresAt, expiresAt);
+      } else if (expiresAt > Date.now()) {
+        player.activeBuffs.push({ sourceItemId, stats: effect.stats, expiresAt });
+      }
+      refreshDerivedStats(player);
+      this.system(player, "success", "Эффект расходуемого предмета активирован.");
+    } else if (effect.kind === "return") {
+      player.position = { ...SPAWN };
+      player.input = { ...player.input, direction: { x: 0, z: 0 }, sprint: false };
+      player.pvpEnabled = false;
+      this.system(player, "info", "Камень возвращает вас к Тихому Истоку.");
+    }
   }
 
   private tick(): void {
@@ -399,7 +631,11 @@ export class GameWorld {
         continue;
       }
 
-      const { moveSpeed } = playerStats(player.classId, player.level);
+      const activeBuffCount = player.activeBuffs.length;
+      player.activeBuffs = player.activeBuffs.filter((buff) => buff.expiresAt > now);
+      if (player.activeBuffs.length !== activeBuffCount) refreshDerivedStats(player, now);
+
+      const { moveSpeed } = player.derivedStats;
       const speed = moveSpeed * (player.input.sprint ? 1.16 : 1);
       const step = speed * (TICK_MS / 1_000);
       player.position.x = clamp(
@@ -511,8 +747,25 @@ export class GameWorld {
   }
 
   private monsterAttack(monster: RuntimeMonster, player: RuntimePlayer): void {
+    const hitChance = clamp(0.62 + monster.level * 0.04 - player.derivedStats.evasion / 500, 0.45, 0.94);
+    if (Math.random() > hitChance) {
+      this.combat({
+        sourceId: monster.id,
+        targetId: player.id,
+        abilityId: "basic",
+        kind: "miss",
+        amount: 0,
+        critical: false,
+        message: `${player.name} уклоняется от атаки существа ${monster.name}.`,
+      });
+      return;
+    }
     const reduced = player.damageReductionUntil > Date.now();
-    const amount = Math.max(1, Math.floor(monster.attackPower * (reduced ? 0.55 : 1)));
+    const armorMultiplier = 100 / (100 + player.derivedStats.armor * 2.2);
+    const amount = Math.max(
+      1,
+      Math.floor(monster.attackPower * armorMultiplier * (reduced ? 0.55 : 1)),
+    );
     player.hp = Math.max(0, player.hp - amount);
     this.combat({
       sourceId: monster.id,
@@ -530,26 +783,31 @@ export class GameWorld {
     const now = Date.now();
     const classDefinition = getClass(player.classId);
     if (input.abilityId !== "basic" && input.abilityId !== classDefinition.signatureAbilityId) {
-      this.system(player, "error", "Это умение недоступно вашему классу.");
+      this.emitAbilityResult(player, input, false, now, "Это умение недоступно вашему классу.");
       return;
     }
     const ability = ABILITIES[input.abilityId];
     const readyAt = player.cooldowns.get(input.abilityId) ?? 0;
-    if (now < readyAt) return;
+    if (now < readyAt) {
+      this.emitAbilityResult(player, input, false, now, "Умение ещё восстанавливается.");
+      return;
+    }
     if (player.mp < ability.manaCost) {
-      this.system(player, "warning", "Недостаточно ресурса для умения.");
+      this.emitAbilityResult(player, input, false, now, "Недостаточно ресурса для умения.");
       return;
     }
 
     if (input.abilityId === "mending_current") {
       const target = input.targetId ? this.players.get(input.targetId) : player;
       if (!target || !target.alive || distance2d(player.position, target.position) > ability.range) {
-        this.system(player, "warning", "Цель лечения вне досягаемости.");
+        this.emitAbilityResult(player, input, false, now, "Цель лечения вне досягаемости.");
         return;
       }
       player.mp -= ability.manaCost;
-      player.cooldowns.set(input.abilityId, now + ability.cooldownMs);
-      const amount = Math.floor(30 + player.level * 8);
+      const cooldownReadyAt = now + ability.cooldownMs / (1 + player.derivedStats.hastePercent);
+      player.cooldowns.set(input.abilityId, cooldownReadyAt);
+      this.emitAbilityResult(player, input, true, now);
+      const amount = Math.floor(24 + player.level * 7 + player.derivedStats.spellPower * 0.7);
       const applied = Math.max(0, Math.min(amount, target.maxHp - target.hp));
       target.hp += applied;
       this.combat({
@@ -567,25 +825,61 @@ export class GameWorld {
     const targetId = input.targetId ?? player.targetId;
     const target = targetId ? this.damageTarget(targetId) : null;
     if (!target || !target.value.alive) {
-      this.system(player, "warning", "Сначала выберите живую цель.");
+      this.emitAbilityResult(player, input, false, now, "Сначала выберите живую цель.");
       return;
     }
     if (target.kind === "player" && (!player.pvpEnabled || !target.value.pvpEnabled)) {
-      this.system(player, "warning", "Сражение между игроками возможно только внутри Круга Спора.");
+      this.emitAbilityResult(
+        player,
+        input,
+        false,
+        now,
+        "Сражение между игроками возможно только внутри Круга Спора.",
+      );
       return;
     }
 
-    const range = input.abilityId === "basic" ? classDefinition.basicRange : ability.range;
+    const range = input.abilityId === "basic" ? player.derivedStats.basicRange : ability.range;
     if (distance2d(player.position, target.value.position) > range) {
-      this.system(player, "warning", "Цель слишком далеко.");
+      this.emitAbilityResult(player, input, false, now, "Цель слишком далеко.");
       return;
     }
 
     player.mp -= ability.manaCost;
-    player.cooldowns.set(input.abilityId, now + ability.cooldownMs);
+    const baseCooldownMs = input.abilityId === "basic"
+      ? player.derivedStats.basicAttackIntervalMs
+      : ability.cooldownMs;
+    const cooldownReadyAt = now + (input.abilityId === "basic"
+      ? baseCooldownMs
+      : baseCooldownMs / (1 + player.derivedStats.hastePercent));
+    player.cooldowns.set(input.abilityId, cooldownReadyAt);
+    this.emitAbilityResult(player, input, true, now);
     if (input.abilityId === "iron_vow") player.damageReductionUntil = now + 4_000;
 
-    const criticalChance = input.abilityId === "far_mark" ? 0.3 : 0.11;
+    const targetEvasion = target.kind === "player" ? target.value.derivedStats.evasion : target.value.level * 3;
+    const hitChance = clamp(
+      0.72 + (player.derivedStats.accuracy - targetEvasion) / 250,
+      0.58,
+      0.99,
+    );
+    if (Math.random() > hitChance) {
+      this.combat({
+        sourceId: player.id,
+        targetId: target.value.id,
+        abilityId: input.abilityId,
+        kind: "miss",
+        amount: 0,
+        critical: false,
+        message: `${player.name} промахивается.`,
+      });
+      return;
+    }
+
+    const criticalChance = clamp(
+      player.derivedStats.criticalChance + (input.abilityId === "far_mark" ? 0.2 : 0),
+      0,
+      0.65,
+    );
     const critical = Math.random() < criticalChance;
     const multiplier =
       input.abilityId === "basic"
@@ -595,9 +889,22 @@ export class GameWorld {
           : input.abilityId === "echo_companion"
             ? 1.5
             : 1.35;
-    let amount = Math.floor((12 + player.level * 4) * multiplier * (critical ? 1.65 : 1));
+    const spellAttack =
+      input.abilityId === "ember_sigil" ||
+      input.abilityId === "echo_companion" ||
+      (input.abilityId === "basic" &&
+        (player.classId === "runesmith" ||
+          player.classId === "lifewarden" ||
+          player.classId === "oathweaver"));
+    const attackPower = spellAttack
+      ? player.derivedStats.spellPower
+      : player.derivedStats.physicalAttack;
+    let amount = Math.floor((7 + attackPower * 0.58) * multiplier * (critical ? 1.65 : 1));
     if (target.kind === "player") {
-      amount = Math.floor(amount * 0.72);
+      const defense = spellAttack
+        ? target.value.derivedStats.resistance
+        : target.value.derivedStats.armor;
+      amount = Math.floor(amount * 0.8 * (100 / (100 + defense * 1.8)));
       if (target.value.damageReductionUntil > now) amount = Math.floor(amount * 0.55);
     }
     amount = Math.max(1, amount);
@@ -636,10 +943,16 @@ export class GameWorld {
 
     const oldLevel = killer.level;
     killer.xp += (monster.elite ? 125 : 42) * monster.level;
-    killer.gold += monster.elite ? 18 : 5 + Math.floor(Math.random() * 5);
+    const baseGold = monster.elite ? 18 : 5 + (this.nextLootRoll() % 5);
+    const salvageBonus = Math.min(
+      0.25,
+      (killer.equipmentStats.criticalRating + killer.equipmentStats.accuracy) / 1_000,
+    );
+    killer.gold += baseGold + Math.floor(baseGold * salvageBonus);
     killer.level = levelFromTotalXp(killer.xp);
     if (killer.level > oldLevel) {
-      const stats = playerStats(killer.classId, killer.level);
+      const stats = playerStats(killer);
+      killer.derivedStats = stats;
       killer.maxHp = stats.maxHp;
       killer.maxMp = stats.maxMp;
       killer.hp = killer.maxHp;
@@ -657,40 +970,66 @@ export class GameWorld {
       message: `${killer.name} рассеивает ${monster.name.toLocaleLowerCase("ru")}.`,
     });
 
-    // Alpha vertical slice keeps drops deterministic so every new player learns the loot loop.
+    // Every kill teaches the loot loop; equipment precision can increase salvage yield and
+    // elite enemies can award a real equippable item instead of only crafting materials.
     const shouldDrop = true;
     if (shouldDrop) {
-      const itemId: ItemId = monster.elite && Math.random() < 0.4 ? "field_tonic" : "mire_shard";
+      const eliteEquipment: ItemId =
+        killer.classId === "warbound"
+          ? "memoryglass_buckler"
+          : killer.classId === "pathfinder"
+            ? "stormglass_longbow"
+            : "moonsilt_amulet";
+      const rareEquipmentChance = 0.12 + Math.min(0.18, salvageBonus);
+      const rareChanceBps = monster.elite ? Math.round(rareEquipmentChance * 10_000) : 0;
+      const rareRoll = this.nextLootRoll();
+      const quantityBonusChanceBps = monster.elite
+        ? 0
+        : Math.round(killer.derivedStats.criticalChance * 10_000);
+      const quantityRoll = this.nextLootRoll();
+      const itemId: ItemId = monster.elite
+        ? rareRoll < rareChanceBps
+          ? eliteEquipment
+          : "resonant_dust"
+        : "mire_shard";
       const definition = ITEMS[itemId];
       const drop: RuntimeLoot = {
         id: randomUUID(),
         itemId,
         name: definition.name,
-        quantity: monster.elite ? 2 : 1,
+        quantity:
+          monster.elite && itemId === "resonant_dust"
+            ? 2
+            : !monster.elite && quantityRoll < quantityBonusChanceBps
+              ? 2
+              : 1,
         position: { ...monster.position },
         ownerId: killer.id,
         publicAt: Date.now() + 8_000,
         expiresAt: Date.now() + 45_000,
+        audit: {
+          sourceMonsterId: monster.id,
+          sourceMonsterKind: monster.kind,
+          sourceMonsterElite: monster.elite,
+          rareRoll,
+          rareChanceBps,
+          quantityRoll,
+          quantityBonusChanceBps,
+        },
       };
       this.loot.set(drop.id, drop);
     }
 
+    this.emitInventoryUpdate(killer);
     if (monster.kind === "mireling" && killer.quest.status === "active") {
-      killer.quest.current = Math.min(killer.quest.required, killer.quest.current + 1);
-      if (killer.quest.current >= killer.quest.required) {
-        killer.quest.status = "completed";
-        killer.gold += 25;
-        this.system(killer, "success", "Поручение «Первые отголоски» выполнено. Награда: 25 марок.");
-      }
-      this.io.to(killer.socketId).emit("quest:update", { ...killer.quest });
-      void this.store.saveQuest(killer.id, killer.quest);
+      void this.recordQuestKill(killer).catch(() => {
+        this.system(killer, "error", "Не удалось записать прогресс поручения. Попробуйте ещё раз.");
+      });
+    } else {
+      void this.persist(killer).catch(() => {
+        this.system(killer, "error", "Награда сохранится при следующей синхронизации.");
+      });
     }
-
-    this.io.to(killer.socketId).emit("inventory:update", {
-      inventory: killer.inventory,
-      gold: killer.gold,
-    });
-    void this.persist(killer);
   }
 
   private defeatPlayer(player: RuntimePlayer, defeatedBy: string): void {
@@ -715,7 +1054,8 @@ export class GameWorld {
   }
 
   private respawnPlayer(player: RuntimePlayer): void {
-    const stats = playerStats(player.classId, player.level);
+    const stats = playerStats(player);
+    player.derivedStats = stats;
     player.position = { ...SPAWN };
     player.maxHp = stats.maxHp;
     player.maxMp = stats.maxMp;
@@ -746,10 +1086,57 @@ export class GameWorld {
     return id ? this.players.get(id) : undefined;
   }
 
+  private rememberResumeState(player: RuntimePlayer): void {
+    const now = Date.now();
+    this.pruneResumeStates(now);
+    const cooldowns = new Map(
+      [...player.cooldowns].filter(([, readyAt]) => readyAt > now),
+    );
+    const activeBuffs = player.activeBuffs
+      .filter(({ expiresAt }) => expiresAt > now)
+      .map((buff) => ({ ...buff, stats: { ...buff.stats } }));
+    this.resumeStates.set(player.id, {
+      expiresAt: now + RESUME_TTL_MS,
+      cooldowns,
+      damageReductionUntil:
+        player.damageReductionUntil > now ? player.damageReductionUntil : 0,
+      activeBuffs,
+      alive: player.alive,
+      respawnAt: player.respawnAt,
+    });
+    while (this.resumeStates.size > MAX_RESUME_STATES) {
+      const oldest = this.resumeStates.keys().next().value as string | undefined;
+      if (!oldest) break;
+      this.resumeStates.delete(oldest);
+    }
+  }
+
+  private takeResumeState(characterId: string): RuntimeResumeState | null {
+    const now = Date.now();
+    this.pruneResumeStates(now);
+    const state = this.resumeStates.get(characterId);
+    if (!state) return null;
+    this.resumeStates.delete(characterId);
+    return {
+      ...state,
+      cooldowns: new Map(state.cooldowns),
+      activeBuffs: state.activeBuffs.map((buff) => ({
+        ...buff,
+        stats: { ...buff.stats },
+      })),
+    };
+  }
+
+  private pruneResumeStates(now: number): void {
+    for (const [characterId, state] of this.resumeStates) {
+      if (state.expiresAt <= now) this.resumeStates.delete(characterId);
+    }
+  }
+
   private sendSnapshots(): void {
     const players = [...this.players.values()].map(publicPlayer);
     const monsters = [...this.monsters.values()].map(publicMonster);
-    const loot = [...this.loot.values()].map((drop) => ({ ...drop, position: { ...drop.position } }));
+    const loot = [...this.loot.values()].map(publicLoot);
     for (const player of this.players.values()) {
       const snapshot: WorldSnapshot = {
         protocolVersion: PROTOCOL_VERSION,
@@ -788,15 +1175,89 @@ export class GameWorld {
     this.io.emit("chat:message", message);
   }
 
+  private emitAbilityResult(
+    player: RuntimePlayer,
+    input: UseAbilityInput,
+    accepted: boolean,
+    serverTime: number,
+    reason?: string,
+  ): void {
+    const result: AbilityUseResult = {
+      seq: input.seq,
+      abilityId: input.abilityId,
+      accepted,
+      serverTime,
+      cooldownReadyAt: Math.ceil(player.cooldowns.get(input.abilityId) ?? 0),
+      ...(reason ? { reason } : {}),
+    };
+    this.io.to(player.socketId).emit("combat:ability-result", result);
+  }
+
+  private emitInventoryUpdate(player: RuntimePlayer): void {
+    this.io.to(player.socketId).emit("inventory:update", {
+      inventory: player.inventory,
+      gold: player.gold,
+      view: { ...player.inventoryView, gold: player.gold },
+      derivedStats: { ...player.derivedStats },
+    });
+  }
+
+  private nextLootRoll(): number {
+    const roll = this.lootRoll();
+    if (!Number.isInteger(roll) || roll < 0 || roll >= 10_000) {
+      throw new Error("Loot RNG must return an integer from 0 through 9999");
+    }
+    return roll;
+  }
+
+  private async recordQuestKill(player: RuntimePlayer): Promise<void> {
+    await this.runCharacterOperation(player.id, async () => {
+      const result = await this.store.advanceQuest(player.id, "first_echoes", 1);
+      const pendingWorldGold = player.gold - player.persistedGold;
+      player.persistedGold = result.gold;
+      player.gold = result.gold + pendingWorldGold;
+      player.inventoryView = { ...player.inventoryView, gold: player.gold };
+      player.quest = result.progress;
+      this.io.to(player.socketId).emit("quest:update", { ...player.quest });
+      this.emitInventoryUpdate(player);
+      if (result.rewarded) {
+        this.system(
+          player,
+          "success",
+          `Поручение «Первые отголоски» выполнено. Награда: ${result.rewardGold} марок.`,
+        );
+      }
+    });
+  }
+
   private async persist(player: RuntimePlayer): Promise<void> {
-    await this.store.saveCharacterState({
+    await this.characterOperations.run(player.id, () => this.persistUnsafe(player));
+  }
+
+  private async persistUnsafe(player: RuntimePlayer): Promise<void> {
+    const unflushedGold = player.gold - player.persistedGold;
+    if (!player.pendingGoldFlush && unflushedGold !== 0) {
+      player.pendingGoldFlush = {
+        operationId: randomUUID(),
+        goldDelta: unflushedGold,
+      };
+    }
+    const pending = player.pendingGoldFlush;
+    const acknowledgedRuntimeGold = player.persistedGold + (pending?.goldDelta ?? 0);
+    const result = await this.store.saveCharacterState({
       id: player.id,
+      operationId: pending?.operationId ?? null,
       position: { ...player.position },
       hp: Math.round(player.hp),
       mp: Math.round(player.mp),
       xp: player.xp,
       level: player.level,
-      gold: player.gold,
+      goldDelta: pending?.goldDelta ?? 0,
     });
+    const worldGoldEarnedWhileSaving = player.gold - acknowledgedRuntimeGold;
+    player.persistedGold = result.gold;
+    player.gold = result.gold + worldGoldEarnedWhileSaving;
+    if (player.pendingGoldFlush === pending) player.pendingGoldFlush = null;
+    player.inventoryView = { ...player.inventoryView, gold: player.gold };
   }
 }

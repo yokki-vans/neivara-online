@@ -1,5 +1,5 @@
-export const PROTOCOL_VERSION = 1;
-export const CONTENT_VERSION = "0.1.0";
+export const PROTOCOL_VERSION = 2;
+export const CONTENT_VERSION = "0.2.0";
 
 export const RACE_IDS = ["erim", "vaeli", "kerran", "narai", "dairi"] as const;
 export type RaceId = (typeof RACE_IDS)[number];
@@ -216,23 +216,6 @@ export const ABILITIES: Readonly<Record<AbilityId, AbilityDefinition>> = {
     hotkey: "2",
   },
 };
-
-export const ITEMS = {
-  mire_shard: {
-    id: "mire_shard",
-    name: "Осколок топкого отголоска",
-    description: "Холодный фрагмент памяти. Нужен хранителям Истока.",
-    color: "#78d5bb",
-  },
-  field_tonic: {
-    id: "field_tonic",
-    name: "Походный настой",
-    description: "Простой восстанавливающий состав Совета Мостов.",
-    color: "#e98970",
-  },
-} as const;
-
-export type ItemId = keyof typeof ITEMS;
 
 export function getRace(id: RaceId): RaceDefinition {
   const value = RACES.find((race) => race.id === id);

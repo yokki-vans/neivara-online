@@ -6,9 +6,11 @@ import { DirectionalLight } from "@babylonjs/core/Lights/directionalLight.js";
 import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight.js";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial.js";
 import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture.js";
+import { Texture } from "@babylonjs/core/Materials/Textures/texture.js";
 import { Color3, Color4 } from "@babylonjs/core/Maths/math.color.js";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
 import { CreateCapsule } from "@babylonjs/core/Meshes/Builders/capsuleBuilder.js";
+import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder.js";
 import { CreateCylinder } from "@babylonjs/core/Meshes/Builders/cylinderBuilder.js";
 import { CreateDisc } from "@babylonjs/core/Meshes/Builders/discBuilder.js";
 import { CreateGround } from "@babylonjs/core/Meshes/Builders/groundBuilder.js";
@@ -21,6 +23,7 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh.js";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
 import { Scene } from "@babylonjs/core/scene.js";
 import {
+  ITEMS,
   getClass,
   getRace,
   type LootSnapshot,
@@ -34,9 +37,15 @@ import { useEffect, useRef } from "react";
 interface Props {
   snapshot: WorldSnapshot | null;
   selectedId: string | null;
+  ownEquipment: VisualEquipmentLoadout;
+  inputBlocked: boolean;
   onSelect: (id: string | null) => void;
   onInput: (input: MovementInput) => void;
   onPickup: (lootId: string) => void;
+}
+
+export interface VisualEquipmentLoadout {
+  [slot: string]: string | null | undefined;
 }
 
 type SnapshotEntity = PlayerSnapshot | MonsterSnapshot | LootSnapshot;
@@ -46,6 +55,19 @@ interface EntityVisual {
   target: Vector3;
   entityType: "player" | "monster" | "loot";
   alive: boolean;
+  equipmentKey: string;
+}
+
+interface RuntimeItemVisual {
+  color?: string;
+  weaponType?: string;
+  armorWeight?: string;
+  visual?: {
+    model?: string;
+    primaryColor?: string;
+    accentColor?: string;
+    scale?: number;
+  };
 }
 
 function color(hex: string): Color3 {
@@ -85,16 +107,383 @@ function addNameplate(scene: Scene, root: TransformNode, text: string, tint: str
   plate.material = plateMaterial;
 }
 
-function playerVisual(scene: Scene, player: PlayerSnapshot): EntityVisual {
+function normalizeEquipment(value: unknown): VisualEquipmentLoadout {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const result: VisualEquipmentLoadout = {};
+  for (const [slot, entry] of Object.entries(value)) {
+    if (typeof entry === "string") result[slot] = entry;
+    else if (entry && typeof entry === "object" && "itemId" in entry && typeof entry.itemId === "string") {
+      result[slot] = entry.itemId;
+    }
+  }
+  return result;
+}
+
+function equipmentKey(loadout: VisualEquipmentLoadout): string {
+  return Object.entries(loadout)
+    .filter((entry): entry is [string, string] => typeof entry[1] === "string")
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([slot, itemId]) => `${slot}:${itemId}`)
+    .join("|");
+}
+
+function equippedItem(loadout: VisualEquipmentLoadout, ...slots: string[]): string | null {
+  for (const slot of slots) {
+    const itemId = loadout[slot];
+    if (itemId) return itemId;
+  }
+  return null;
+}
+
+function itemVisual(itemId: string | null): RuntimeItemVisual | null {
+  if (!itemId) return null;
+  return (ITEMS as unknown as Record<string, RuntimeItemVisual | undefined>)[itemId] ?? null;
+}
+
+function visualColor(itemId: string | null, fallback: string): string {
+  const definition = itemVisual(itemId);
+  return definition?.visual?.primaryColor ?? definition?.color ?? fallback;
+}
+
+function addWeapon(
+  scene: Scene,
+  root: TransformNode,
+  playerId: string,
+  itemId: string,
+  side: 1 | -1,
+  fallback: string,
+): void {
+  const definition = itemVisual(itemId);
+  const modelHint = `${itemId} ${definition?.weaponType ?? ""} ${definition?.visual?.model ?? ""}`.toLowerCase();
+  const primary = visualColor(itemId, fallback);
+  const accent = definition?.visual?.accentColor ?? "#ead18c";
+  const scale = Math.max(0.75, Math.min(1.35, definition?.visual?.scale ?? 1));
+  const mount = new TransformNode(`weapon-${playerId}-${side}`, scene);
+  mount.parent = root;
+  mount.position.copyFromFloats(0.68 * side, 1.12, 0.1);
+  mount.rotation.z = side * -0.16;
+  mount.scaling.scaleInPlace(scale);
+
+  if (/bow|longbow|shortbow|лук/.test(modelHint)) {
+    const bow = CreateTorus(`bow-${playerId}-${side}`, { diameter: 1.25, thickness: 0.055, tessellation: 32 }, scene);
+    bow.parent = mount;
+    bow.scaling.x = 0.42;
+    bow.rotation.x = Math.PI / 2;
+    bow.material = material(scene, `bow-mat-${playerId}-${side}`, color(primary));
+    const grip = CreateCylinder(`bow-grip-${playerId}-${side}`, { height: 0.32, diameter: 0.09 }, scene);
+    grip.parent = mount;
+    grip.material = material(scene, `bow-grip-mat-${playerId}-${side}`, color(accent));
+    return;
+  }
+
+  if (/staff|wand|scepter|посох|жезл|скипетр/.test(modelHint)) {
+    const shaft = CreateCylinder(`staff-${playerId}-${side}`, { height: 2.05, diameter: 0.095, tessellation: 10 }, scene);
+    shaft.parent = mount;
+    shaft.position.y = 0.12;
+    shaft.material = material(scene, `staff-mat-${playerId}-${side}`, color(primary));
+    const focus = CreatePolyhedron(`staff-focus-${playerId}-${side}`, { type: 1, size: 0.22 }, scene);
+    focus.parent = mount;
+    focus.position.y = 1.18;
+    focus.material = material(scene, `staff-focus-mat-${playerId}-${side}`, color(accent), 0.55);
+    return;
+  }
+
+  if (/spear|lance|копь/.test(modelHint)) {
+    const shaft = CreateCylinder(`spear-${playerId}-${side}`, { height: 2.25, diameter: 0.085, tessellation: 10 }, scene);
+    shaft.parent = mount;
+    shaft.position.y = 0.2;
+    shaft.material = material(scene, `spear-mat-${playerId}-${side}`, color(primary));
+    const point = CreatePolyhedron(`spear-point-${playerId}-${side}`, { type: 1, size: 0.2 }, scene);
+    point.parent = mount;
+    point.position.y = 1.42;
+    point.scaling.y = 1.75;
+    point.material = material(scene, `spear-point-mat-${playerId}-${side}`, color(accent), 0.18);
+    return;
+  }
+
+  if (/tome|book|codex|grimoire|фолиант/.test(modelHint)) {
+    const book = CreateBox(`tome-${playerId}-${side}`, { width: 0.52, height: 0.68, depth: 0.14 }, scene);
+    book.parent = mount;
+    book.position.y = 0.35;
+    book.rotation.z = side * 0.28;
+    book.material = material(scene, `tome-mat-${playerId}-${side}`, color(primary), 0.12);
+    const clasp = CreateBox(`tome-clasp-${playerId}-${side}`, { width: 0.1, height: 0.7, depth: 0.16 }, scene);
+    clasp.parent = mount;
+    clasp.position.copyFromFloats(0.08 * side, 0.35, 0);
+    clasp.material = material(scene, `tome-clasp-mat-${playerId}-${side}`, color(accent), 0.2);
+    return;
+  }
+
+  if (/spear|lance|копь|пика/.test(modelHint)) {
+    const shaft = CreateCylinder(
+      `spear-shaft-${playerId}-${side}`,
+      { height: 2.35, diameter: 0.075, tessellation: 10 },
+      scene,
+    );
+    shaft.parent = mount;
+    shaft.position.y = 0.52;
+    shaft.material = material(scene, `spear-shaft-mat-${playerId}-${side}`, color(accent));
+    const tip = CreatePolyhedron(`spear-tip-${playerId}-${side}`, { type: 1, size: 0.22 }, scene);
+    tip.parent = mount;
+    tip.position.y = 1.78;
+    tip.scaling.copyFromFloats(0.58, 1.55, 0.4);
+    tip.material = material(scene, `spear-tip-mat-${playerId}-${side}`, color(primary), 0.12);
+    const counterweight = CreateSphere(
+      `spear-counterweight-${playerId}-${side}`,
+      { diameter: 0.14, segments: 8 },
+      scene,
+    );
+    counterweight.parent = mount;
+    counterweight.position.y = -0.69;
+    counterweight.material = material(scene, `spear-counterweight-mat-${playerId}-${side}`, color(primary));
+    return;
+  }
+
+  const isMace = /mace|hammer|maul|булав|молот/.test(modelHint);
+  const isDagger = /dagger|knife|кинжал/.test(modelHint);
+  const isGreatblade = /greatblade|greatsword|claymore|двуруч/.test(modelHint);
+  const shaft = CreateCylinder(
+    `weapon-grip-${playerId}-${side}`,
+    { height: isDagger ? 0.38 : 0.62, diameter: 0.1, tessellation: 10 },
+    scene,
+  );
+  shaft.parent = mount;
+  shaft.position.y = -0.22;
+  shaft.material = material(scene, `weapon-grip-mat-${playerId}-${side}`, color(accent));
+  if (isMace) {
+    const head = CreatePolyhedron(`mace-${playerId}-${side}`, { type: 1, size: 0.28 }, scene);
+    head.parent = mount;
+    head.position.y = 0.25;
+    head.material = material(scene, `mace-mat-${playerId}-${side}`, color(primary), 0.08);
+  } else {
+    const blade = CreateBox(
+      `blade-${playerId}-${side}`,
+      {
+        width: isDagger ? 0.14 : isGreatblade ? 0.3 : 0.19,
+        height: isDagger ? 0.55 : isGreatblade ? 1.62 : 1.22,
+        depth: isGreatblade ? 0.085 : 0.055,
+      },
+      scene,
+    );
+    blade.parent = mount;
+    blade.position.y = isDagger ? 0.23 : isGreatblade ? 0.78 : 0.58;
+    blade.material = material(scene, `blade-mat-${playerId}-${side}`, color(primary), 0.12);
+    const guard = CreateBox(`guard-${playerId}-${side}`, { width: 0.42, height: 0.08, depth: 0.1 }, scene);
+    guard.parent = mount;
+    guard.position.y = -0.01;
+    guard.material = material(scene, `guard-mat-${playerId}-${side}`, color(accent));
+  }
+}
+
+function addRaceSilhouette(scene: Scene, root: TransformNode, player: PlayerSnapshot): void {
+  const race = getRace(player.race);
+  const primary = material(scene, `race-detail-${player.id}`, color(race.accent), 0.18);
+  const secondary = material(scene, `race-detail-secondary-${player.id}`, color(race.color), 0.05);
+
+  if (player.race === "erim") {
+    const circlet = CreateTorus(
+      `erim-circlet-${player.id}`,
+      { diameter: 0.56, thickness: 0.035, tessellation: 20 },
+      scene,
+    );
+    circlet.parent = root;
+    circlet.position.copyFromFloats(0, 2.38, -0.01);
+    circlet.rotation.x = Math.PI / 2;
+    circlet.material = primary;
+    return;
+  }
+
+  if (player.race === "vaeli") {
+    for (const side of [-1, 1] as const) {
+      const leaf = CreatePolyhedron(`vaeli-leaf-${player.id}-${side}`, { type: 1, size: 0.18 }, scene);
+      leaf.parent = root;
+      leaf.position.copyFromFloats(0.34 * side, 2.29, -0.01);
+      leaf.scaling.copyFromFloats(1.45, 0.5, 0.28);
+      leaf.rotation.z = side * 0.35;
+      leaf.material = primary;
+      const bud = CreateSphere(`vaeli-bud-${player.id}-${side}`, { diameter: 0.09, segments: 8 }, scene);
+      bud.parent = root;
+      bud.position.copyFromFloats(0.17 * side, 2.58, -0.02);
+      bud.material = secondary;
+    }
+    return;
+  }
+
+  if (player.race === "kerran") {
+    for (const side of [-1, 1] as const) {
+      const brow = CreatePolyhedron(`kerran-brow-${player.id}-${side}`, { type: 1, size: 0.15 }, scene);
+      brow.parent = root;
+      brow.position.copyFromFloats(0.17 * side, 2.42, -0.24);
+      brow.scaling.copyFromFloats(1.2, 0.68, 0.42);
+      brow.rotation.z = side * -0.2;
+      brow.material = primary;
+      const shoulderPlate = CreatePolyhedron(
+        `kerran-plate-${player.id}-${side}`,
+        { type: 1, size: 0.2 },
+        scene,
+      );
+      shoulderPlate.parent = root;
+      shoulderPlate.position.copyFromFloats(0.59 * side, 1.6, -0.04);
+      shoulderPlate.scaling.copyFromFloats(1.15, 0.65, 0.7);
+      shoulderPlate.material = secondary;
+    }
+    return;
+  }
+
+  if (player.race === "narai") {
+    const halo = CreateTorus(
+      `narai-halo-${player.id}`,
+      { diameter: 0.74, thickness: 0.025, tessellation: 28 },
+      scene,
+    );
+    halo.parent = root;
+    halo.position.copyFromFloats(0, 2.33, 0.15);
+    halo.rotation.x = Math.PI / 2;
+    halo.material = primary;
+    for (const side of [-1, 1] as const) {
+      const veil = CreateBox(
+        `narai-veil-${player.id}-${side}`,
+        { width: 0.09, height: 0.7, depth: 0.025 },
+        scene,
+      );
+      veil.parent = root;
+      veil.position.copyFromFloats(0.22 * side, 1.98, 0.15);
+      veil.rotation.z = side * 0.12;
+      veil.material = secondary;
+    }
+    return;
+  }
+
+  for (const side of [-1, 1] as const) {
+    const horn = CreateCylinder(
+      `dairi-horn-${player.id}-${side}`,
+      { height: 0.36, diameterTop: 0.02, diameterBottom: 0.11, tessellation: 8 },
+      scene,
+    );
+    horn.parent = root;
+    horn.position.copyFromFloats(0.19 * side, 2.56, -0.03);
+    horn.rotation.z = side * -0.38;
+    horn.material = primary;
+  }
+}
+
+function addShield(scene: Scene, root: TransformNode, playerId: string, itemId: string, fallback: string): void {
+  const shield = CreateCylinder(
+    `shield-${playerId}`,
+    { diameter: 0.9, height: 0.13, tessellation: 8 },
+    scene,
+  );
+  shield.parent = root;
+  shield.position.copyFromFloats(-0.66, 1.22, 0.22);
+  shield.rotation.x = Math.PI / 2;
+  shield.rotation.z = -0.13;
+  shield.material = material(scene, `shield-mat-${playerId}`, color(visualColor(itemId, fallback)), 0.06);
+  const boss = CreateSphere(`shield-boss-${playerId}`, { diameter: 0.23, segments: 8 }, scene);
+  boss.parent = shield;
+  boss.position.y = -0.09;
+  boss.material = material(scene, `shield-boss-mat-${playerId}`, color("#d9bd78"), 0.12);
+}
+
+function playerVisual(scene: Scene, player: PlayerSnapshot, loadout: VisualEquipmentLoadout): EntityVisual {
   const root = new TransformNode(`player-${player.id}`, scene);
   root.position.copyFromFloats(player.position.x, player.position.y, player.position.z);
   const race = getRace(player.race);
   const classInfo = getClass(player.classId);
 
-  const body = CreateCapsule(`body-${player.id}`, { height: 1.9, radius: 0.42 }, scene);
+  const chestItem = equippedItem(loadout, "chest", "armor");
+  const headItem = equippedItem(loadout, "head", "helmet");
+  const handsItem = equippedItem(loadout, "hands", "gloves");
+  const legsItem = equippedItem(loadout, "legs");
+  const feetItem = equippedItem(loadout, "feet", "boots");
+  const mainHandItem = equippedItem(loadout, "main_hand", "weapon");
+  const offHandItem = equippedItem(loadout, "off_hand", "shield");
+  const armorColor = visualColor(chestItem, race.color);
+  const armorAccent = itemVisual(chestItem)?.visual?.accentColor ?? classInfo.color;
+  const armorWeight = itemVisual(chestItem)?.armorWeight;
+  const bodyWidth = player.race === "kerran" ? 1.12 : player.race === "narai" ? 0.9 : 1;
+  const bodyHeight = player.race === "narai" || player.race === "vaeli" ? 1.05 : 1;
+  const armorBulk = armorWeight === "heavy" ? 1.12 : armorWeight === "light" ? 0.94 : 1;
+
+  const body = CreateCapsule(`body-${player.id}`, { height: 1.55, radius: 0.39 }, scene);
   body.parent = root;
-  body.position.y = 1.05;
-  body.material = material(scene, `body-mat-${player.id}`, color(race.color));
+  body.position.y = 1.32;
+  body.scaling.copyFromFloats(bodyWidth * armorBulk, bodyHeight, bodyWidth * armorBulk);
+  body.material = material(scene, `body-mat-${player.id}`, color(armorColor));
+
+  const chest = CreateCylinder(
+    `chest-${player.id}`,
+    { height: 0.92, diameterTop: 0.66, diameterBottom: 0.86, tessellation: 10 },
+    scene,
+  );
+  chest.parent = root;
+  chest.position.y = 1.48;
+  chest.scaling.copyFromFloats(bodyWidth * armorBulk, bodyHeight, bodyWidth * armorBulk);
+  chest.material = material(scene, `chest-mat-${player.id}`, color(armorColor), chestItem ? 0.04 : 0);
+
+  const head = CreateSphere(`head-${player.id}`, { diameter: 0.54, segments: 12 }, scene);
+  head.parent = root;
+  head.position.y = 2.25;
+  head.material = material(scene, `head-mat-${player.id}`, color(race.color));
+
+  const hair = CreateSphere(`hair-${player.id}`, { diameter: 0.57, segments: 10 }, scene);
+  hair.parent = root;
+  hair.position.copyFromFloats(0, 2.34, -0.035);
+  hair.scaling.y = 0.55;
+  hair.material = material(scene, `hair-mat-${player.id}`, color(race.accent));
+  addRaceSilhouette(scene, root, player);
+
+  for (const side of [-1, 1] as const) {
+    const arm = CreateCylinder(`arm-${player.id}-${side}`, { height: 0.88, diameter: 0.2, tessellation: 8 }, scene);
+    arm.parent = root;
+    arm.position.copyFromFloats(0.51 * side, 1.32, 0);
+    arm.rotation.z = side * -0.14;
+    arm.material = material(scene, `arm-mat-${player.id}-${side}`, color(visualColor(handsItem, armorColor)));
+    const leg = CreateCylinder(`leg-${player.id}-${side}`, { height: 0.92, diameter: 0.25, tessellation: 8 }, scene);
+    leg.parent = root;
+    leg.position.copyFromFloats(0.2 * side, 0.54, 0);
+    leg.material = material(scene, `leg-mat-${player.id}-${side}`, color(visualColor(legsItem, armorColor)));
+    const boot = CreateBox(`boot-${player.id}-${side}`, { width: 0.28, height: 0.26, depth: 0.42 }, scene);
+    boot.parent = root;
+    boot.position.copyFromFloats(0.2 * side, 0.16, 0.09);
+    boot.material = material(scene, `boot-mat-${player.id}-${side}`, color(visualColor(feetItem, "#3c3430")));
+  }
+
+  if (chestItem && armorWeight === "heavy") {
+    for (const side of [-1, 1] as const) {
+      const pauldron = CreateSphere(`pauldron-${player.id}-${side}`, { diameter: 0.42, segments: 8 }, scene);
+      pauldron.parent = root;
+      pauldron.position.copyFromFloats(0.53 * side, 1.7, 0);
+      pauldron.scaling.copyFromFloats(1.15, 0.58, 0.9);
+      pauldron.material = material(scene, `pauldron-mat-${player.id}-${side}`, color(armorAccent), 0.08);
+    }
+  } else if (chestItem) {
+    const collar = CreateTorus(
+      `collar-${player.id}`,
+      { diameter: 0.82, thickness: armorWeight === "light" ? 0.055 : 0.085, tessellation: 18 },
+      scene,
+    );
+    collar.parent = root;
+    collar.position.y = 1.73;
+    collar.rotation.x = Math.PI / 2;
+    collar.material = material(scene, `collar-mat-${player.id}`, color(armorAccent), 0.08);
+  }
+
+  if (headItem) {
+    const headWeight = itemVisual(headItem)?.armorWeight;
+    const helm = headWeight === "light"
+      ? CreateSphere(`helm-${player.id}`, { diameter: 0.64, segments: 10 }, scene)
+      : CreateCylinder(`helm-${player.id}`, { height: 0.43, diameterTop: 0.43, diameterBottom: 0.58, tessellation: 10 }, scene);
+    helm.parent = root;
+    helm.position.y = headWeight === "light" ? 2.35 : 2.38;
+    if (headWeight === "light") helm.scaling.copyFromFloats(1, 1.08, 0.92);
+    helm.material = material(scene, `helm-mat-${player.id}`, color(visualColor(headItem, armorColor)), 0.04);
+    if (headWeight !== "light") {
+      const crest = CreateBox(`helm-crest-${player.id}`, { width: 0.08, height: 0.36, depth: 0.34 }, scene);
+      crest.parent = root;
+      crest.position.copyFromFloats(0, 2.68, -0.04);
+      crest.material = material(scene, `helm-crest-mat-${player.id}`, color(armorAccent), 0.08);
+    }
+  }
 
   const mantle = CreateTorus(
     `mantle-${player.id}`,
@@ -102,26 +491,32 @@ function playerVisual(scene: Scene, player: PlayerSnapshot): EntityVisual {
     scene,
   );
   mantle.parent = root;
-  mantle.position.y = 1.45;
+  mantle.position.y = 1.72;
   mantle.rotation.x = Math.PI / 2;
   mantle.material = material(scene, `class-mat-${player.id}`, color(classInfo.color), 0.25);
 
-  const focus = CreatePolyhedron(
-    `focus-${player.id}`,
-    { type: 1, size: 0.23 },
-    scene,
-  );
-  focus.parent = root;
-  focus.position.y = 2.3;
-  focus.material = material(scene, `focus-mat-${player.id}`, color(classInfo.color), 0.75);
+  if (mainHandItem) addWeapon(scene, root, player.id, mainHandItem, 1, classInfo.color);
+  if (offHandItem) {
+    const hint = `${offHandItem} ${itemVisual(offHandItem)?.visual?.model ?? ""}`.toLowerCase();
+    if (/shield|buckler|щит/.test(hint)) addShield(scene, root, player.id, offHandItem, armorColor);
+    else addWeapon(scene, root, player.id, offHandItem, -1, classInfo.color);
+  }
 
-  addNameplate(scene, root, `${player.name}  ·  ${player.level}`, race.accent, 2.8);
+  if (!mainHandItem) {
+    const focus = CreatePolyhedron(`focus-${player.id}`, { type: 1, size: 0.19 }, scene);
+    focus.parent = root;
+    focus.position.copyFromFloats(0.68, 1.1, 0.1);
+    focus.material = material(scene, `focus-mat-${player.id}`, color(classInfo.color), 0.75);
+  }
+
+  addNameplate(scene, root, `${player.name}  ·  ${player.level}`, race.accent, 3.05);
   markPickable(root, player.id, "player");
   return {
     root,
     target: new Vector3(player.position.x, player.position.y, player.position.z),
     entityType: "player",
     alive: player.alive,
+    equipmentKey: equipmentKey(loadout),
   };
 }
 
@@ -163,6 +558,7 @@ function monsterVisual(scene: Scene, monster: MonsterSnapshot): EntityVisual {
     target: new Vector3(monster.position.x, monster.position.y, monster.position.z),
     entityType: "monster",
     alive: monster.alive,
+    equipmentKey: "",
   };
 }
 
@@ -179,6 +575,7 @@ function lootVisual(scene: Scene, loot: LootSnapshot): EntityVisual {
     target: new Vector3(loot.position.x, loot.position.y, loot.position.z),
     entityType: "loot",
     alive: true,
+    equipmentKey: "",
   };
 }
 
@@ -197,13 +594,29 @@ function buildEnvironment(scene: Scene): Mesh {
   sun.diffuse = color("#ffdca3");
 
   const ground = CreateGround("ground", { width: 100, height: 100, subdivisions: 2 }, scene);
-  ground.material = material(scene, "ground-material", color("#315c49"));
+  const groundMaterial = material(scene, "ground-material", color("#7d9b80"));
+  const groundTexture = new Texture(
+    `${import.meta.env.BASE_URL}assets/textures/neivara-ground.jpg`,
+    scene,
+  );
+  groundTexture.uScale = 8;
+  groundTexture.vScale = 8;
+  groundMaterial.diffuseTexture = groundTexture;
+  ground.material = groundMaterial;
   ground.metadata = { ground: true };
 
   const path = CreateGround("path", { width: 9, height: 72 }, scene);
   path.position.y = 0.015;
   path.rotation.y = -0.55;
-  path.material = material(scene, "path-material", color("#7b6d50"));
+  const pathMaterial = material(scene, "path-material", color("#9c9075"));
+  const pathTexture = new Texture(
+    `${import.meta.env.BASE_URL}assets/textures/neivara-stone-path.jpg`,
+    scene,
+  );
+  pathTexture.uScale = 2;
+  pathTexture.vScale = 14;
+  pathMaterial.diffuseTexture = pathTexture;
+  path.material = pathMaterial;
   path.isPickable = false;
 
   const sanctuary = CreateDisc("sanctuary", { radius: 9, tessellation: 48 }, scene);
@@ -278,13 +691,23 @@ function buildEnvironment(scene: Scene): Mesh {
   return ground;
 }
 
-export function WorldCanvas({ snapshot, selectedId, onSelect, onInput, onPickup }: Props) {
+export function WorldCanvas({
+  snapshot,
+  selectedId,
+  ownEquipment,
+  inputBlocked,
+  onSelect,
+  onInput,
+  onPickup,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<Scene | null>(null);
   const cameraRef = useRef<ArcRotateCamera | null>(null);
   const visualsRef = useRef(new Map<string, EntityVisual>());
   const snapshotRef = useRef(snapshot);
   const selectedRef = useRef(selectedId);
+  const ownEquipmentRef = useRef(ownEquipment);
+  const inputBlockedRef = useRef(inputBlocked);
   const callbacksRef = useRef({ onSelect, onInput, onPickup });
   const keysRef = useRef(new Set<string>());
   const destinationRef = useRef<Vector3 | null>(null);
@@ -293,6 +716,8 @@ export function WorldCanvas({ snapshot, selectedId, onSelect, onInput, onPickup 
 
   snapshotRef.current = snapshot;
   selectedRef.current = selectedId;
+  ownEquipmentRef.current = ownEquipment;
+  inputBlockedRef.current = inputBlocked;
   callbacksRef.current = { onSelect, onInput, onPickup };
 
   useEffect(() => {
@@ -350,6 +775,7 @@ export function WorldCanvas({ snapshot, selectedId, onSelect, onInput, onPickup 
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+      if (inputBlockedRef.current) return;
       keysRef.current.add(event.code);
       if (event.code === "Escape") callbacksRef.current.onSelect(null);
     };
@@ -394,11 +820,14 @@ export function WorldCanvas({ snapshot, selectedId, onSelect, onInput, onPickup 
       const forwardRay = camera.getForwardRay().direction;
       const forward = new Vector3(forwardRay.x, 0, forwardRay.z).normalize();
       const right = new Vector3(forward.z, 0, -forward.x);
-      const axisX = (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
-      const axisZ = (keys.has("KeyW") ? 1 : 0) - (keys.has("KeyS") ? 1 : 0);
+      const axisX = inputBlockedRef.current ? 0 : (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
+      const axisZ = inputBlockedRef.current ? 0 : (keys.has("KeyW") ? 1 : 0) - (keys.has("KeyS") ? 1 : 0);
       let direction = forward.scale(axisZ).add(right.scale(axisX));
 
-      if (direction.lengthSquared() <= 0.0001 && destinationRef.current) {
+      if (inputBlockedRef.current) {
+        destinationRef.current = null;
+        keysRef.current.clear();
+      } else if (direction.lengthSquared() <= 0.0001 && destinationRef.current) {
         direction = destinationRef.current.subtract(new Vector3(own.position.x, 0, own.position.z));
         direction.y = 0;
         if (direction.length() < 0.45) {
@@ -417,7 +846,7 @@ export function WorldCanvas({ snapshot, selectedId, onSelect, onInput, onPickup 
         seq: sequenceRef.current,
         direction: { x: direction.x, z: direction.z },
         facing: lastFacingRef.current,
-        sprint: keys.has("ShiftLeft") || keys.has("ShiftRight"),
+        sprint: !inputBlockedRef.current && (keys.has("ShiftLeft") || keys.has("ShiftRight")),
       });
     });
 
@@ -444,9 +873,15 @@ export function WorldCanvas({ snapshot, selectedId, onSelect, onInput, onPickup 
       entityType: EntityVisual["entityType"],
       create: () => EntityVisual,
       alive = true,
+      nextEquipmentKey = "",
     ) => {
       incoming.add(entity.id);
       let visual = visualsRef.current.get(entity.id);
+      if (visual && entityType === "player" && visual.equipmentKey !== nextEquipmentKey) {
+        visual.root.dispose(false, true);
+        visualsRef.current.delete(entity.id);
+        visual = undefined;
+      }
       if (!visual) {
         visual = create();
         visualsRef.current.set(entity.id, visual);
@@ -459,7 +894,12 @@ export function WorldCanvas({ snapshot, selectedId, onSelect, onInput, onPickup 
     };
 
     for (const player of snapshot.players) {
-      update(player, "player", () => playerVisual(scene, player), player.alive);
+      const remoteEquipment = normalizeEquipment((player as unknown as { equipment?: unknown }).equipment);
+      const loadout = player.id === snapshot.selfId
+        ? { ...remoteEquipment, ...ownEquipmentRef.current }
+        : remoteEquipment;
+      const key = equipmentKey(loadout);
+      update(player, "player", () => playerVisual(scene, player, loadout), player.alive, key);
     }
     for (const monster of snapshot.monsters) {
       update(monster, "monster", () => monsterVisual(scene, monster), monster.alive);
@@ -473,7 +913,7 @@ export function WorldCanvas({ snapshot, selectedId, onSelect, onInput, onPickup 
         visualsRef.current.delete(id);
       }
     }
-  }, [snapshot]);
+  }, [snapshot, ownEquipment]);
 
   return <canvas ref={canvasRef} className="world-canvas" aria-label="Трёхмерный мир Нейвары" />;
 }

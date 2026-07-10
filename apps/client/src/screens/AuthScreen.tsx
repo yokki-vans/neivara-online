@@ -37,7 +37,7 @@ export function AuthScreen({ onAuthenticated }: Props) {
           <span />
           <i />
         </div>
-        <p className="eyebrow">Браузерная 3D MMORPG · ранний прототип</p>
+        <p className="eyebrow">Браузерная 3D MMORPG · техническая альфа</p>
         <h1>
           Истоки
           <span>Нейвары</span>
@@ -109,7 +109,7 @@ export function AuthScreen({ onAuthenticated }: Props) {
           </button>
         </form>
         <p className="fine-print">
-          Это самостоятельный ранний прототип. Персонажи memory-сервера удаляются
+          Это самостоятельная техническая альфа. Персонажи memory-сервера удаляются
           при его перезапуске; PostgreSQL сохраняет прогресс постоянно.
         </p>
       </section>

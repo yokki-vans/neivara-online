@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { PROTOCOL_VERSION } from "@neivara/shared";
 import { io } from "socket.io-client";
 
@@ -73,6 +74,57 @@ function connect(player) {
 
 const first = await createPlayer("Alder", "erim", "pathfinder");
 const second = await createPlayer("Birch", "vaeli", "lifewarden");
+
+const initialInventory = await request(
+  `/v1/characters/${first.character.id}/inventory`,
+  {},
+  first.token,
+);
+if (initialInventory.inventory.items.length !== 8 || initialInventory.inventory.usedSlots !== 8) {
+  throw new Error("Starter inventory was not granted exactly once");
+}
+const starterWeapon = initialInventory.inventory.equipment.main_hand;
+if (!starterWeapon || !initialInventory.equipment.main_hand) {
+  throw new Error("Starter weapon was not auto-equipped");
+}
+const attackWithWeapon = initialInventory.derivedStats.physicalAttack;
+const unequipped = await request(
+  `/v1/characters/${first.character.id}/equipment/main_hand/unequip`,
+  { method: "POST", body: "{}" },
+  first.token,
+);
+if (unequipped.inventory.equipment.main_hand || unequipped.derivedStats.physicalAttack >= attackWithWeapon) {
+  throw new Error("Unequip did not remove the weapon stat contribution");
+}
+const reequipped = await request(
+  `/v1/characters/${first.character.id}/inventory/${starterWeapon.instanceId}/equip`,
+  { method: "POST", body: "{}" },
+  first.token,
+);
+if (
+  reequipped.inventory.equipment.main_hand?.instanceId !== starterWeapon.instanceId
+  || reequipped.derivedStats.physicalAttack !== attackWithWeapon
+) {
+  throw new Error("Equip did not restore the authoritative loadout and stats");
+}
+const starterTonic = reequipped.inventory.items.find((item) => item.itemId === "field_tonic");
+if (!starterTonic) throw new Error("Starter consumable is missing");
+const afterConsumable = await request(
+  `/v1/characters/${first.character.id}/inventory/${starterTonic.instanceId}/use`,
+  {
+    method: "POST",
+    body: JSON.stringify({ quantity: 1 }),
+    headers: { "Idempotency-Key": randomUUID() },
+  },
+  first.token,
+);
+if (
+  afterConsumable.inventory.items.find((item) => item.instanceId === starterTonic.instanceId)?.quantity
+    !== starterTonic.quantity - 1
+) {
+  throw new Error("Consumable quantity was not decremented authoritatively");
+}
+
 const socketA = await connect(first);
 const socketB = await connect(second);
 
@@ -264,7 +316,7 @@ try {
   if (!persistedCharacter || persistedCharacter.xp < xpResultPlayer.xp) {
     throw new Error("Character progression was not persisted");
   }
-  if (!persistedDetails.inventory.some((item) => item.itemId === ownedDrop.itemId)) {
+  if (!persistedDetails.inventory.items.some((item) => item.itemId === ownedDrop.itemId)) {
     throw new Error("Inventory was not persisted");
   }
   if (persistedDetails.quest.current < questResult.current) {
@@ -277,6 +329,7 @@ try {
     playersVisibleToA: snapshotA.players.length,
     playersVisibleToB: snapshotB.players.length,
     chat: "received",
+    inventory: "starter grant, equip, unequip and consumable verified",
     authoritativeMovementDelta: Number((finalX - initial).toFixed(3)),
     pve: "monster defeated",
     xpAwarded: xpResultPlayer.xp,

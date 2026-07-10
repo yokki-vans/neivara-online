@@ -9,6 +9,10 @@
 - PostgreSQL для аккаунтов и прогресса;
 - общий versioned TypeScript-протокол;
 - регистрация, персонажи, realtime-мир, PvE/PvP и оригинальный vertical slice;
+- 34 оригинальных предмета, 13 слотов, paper-doll, расходники и улучшение;
+- разные процедурные силуэты пяти народов, оружия и весовые классы брони;
+- атомарные item transactions, PostgreSQL economy ledger и authoritative combat stats;
+- собственные бесшовные ground/path textures и clean-room concept sheets;
 - CI, тесты и deployment-конфигурация.
 
 ## Локальный запуск
@@ -29,6 +33,8 @@ npm run dev
 ```bash
 npm test
 npm run typecheck
+npm run lint
+npm run assets:check
 npm run build
 ```
 
@@ -41,12 +47,12 @@ API_URL=https://authentic-expression-production-bdc5.up.railway.app npm run smok
 
 ## Деплой
 
-- Сервер собирается корневым `Dockerfile`; Railway использует `railway.toml` и `/healthz`.
+- Сервер собирается корневым `Dockerfile`; Railway использует `railway.toml` и dependency-aware `/readyz`.
 - Добавьте Railway PostgreSQL и переменные из `.env.example`, затем сгенерируйте публичный домен сервиса.
 - В GitHub задайте repository variable `VITE_API_URL` равной публичному HTTPS URL Railway.
-- В Settings → Pages выберите GitHub Actions. Workflow `.github/workflows/pages.yml` публикует `apps/client/dist`.
+- В Settings → Pages выберите GitHub Actions. После полного verify job workflow `.github/workflows/ci.yml` публикует `apps/client/dist`.
 - В Railway задайте `CLIENT_ORIGINS=https://<owner>.github.io` (и custom domain, если он будет).
 
 Текущий production API: [authentic-expression-production-bdc5.up.railway.app](https://authentic-expression-production-bdc5.up.railway.app/healthz).
 
-Подробности: [план](docs/PROJECT_PLAN.md), [архитектура](docs/ARCHITECTURE.md), [дизайн мира](docs/GAME_DESIGN.md).
+Подробности: [план](docs/PROJECT_PLAN.md), [production gates](docs/PRODUCTION_READINESS.md), [архитектура](docs/ARCHITECTURE.md), [operations runbook](docs/OPERATIONS.md), [дизайн мира](docs/GAME_DESIGN.md), [art direction](docs/art/ART_DIRECTION.md) и [политика оригинальности](docs/ORIGINALITY_POLICY.md).

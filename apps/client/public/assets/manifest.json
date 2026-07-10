@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "license": "Project-original clean-room artwork",
+  "textures": {
+    "valeGround": {
+      "url": "./textures/neivara-ground.jpg",
+      "kind": "tileable-albedo"
+    },
+    "wellspringStone": {
+      "url": "./textures/neivara-stone-path.jpg",
+      "kind": "tileable-albedo"
+    }
+  },
+  "concepts": {
+    "peoples": "./concepts/neivara-character-lineup.jpg",
+    "equipment": "./concepts/neivara-equipment-sheet.jpg"
+  }
+}

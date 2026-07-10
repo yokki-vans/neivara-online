@@ -1,7 +1,8 @@
 {
   "name": "neivara-online",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
+  "license": "UNLICENSED",
   "type": "module",
   "workspaces": [
     "apps/*",
@@ -20,6 +21,7 @@
     "smoke": "node tools/smoke-multiplayer.mjs",
     "typecheck": "npm run build:shared && npm run typecheck --workspace @neivara/server && npm run typecheck --workspace @neivara/client",
     "lint": "eslint .",
+    "assets:check": "node tools/verify-assets.mjs",
     "start": "npm run start --workspace @neivara/server"
   },
   "devDependencies": {

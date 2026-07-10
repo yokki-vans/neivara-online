@@ -1,17 +1,19 @@
 {
   "name": "@neivara/client",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
+  "license": "UNLICENSED",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "test": "vitest run src/inventoryReliability.test.ts src/inventoryPresentation.test.ts",
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
     "@babylonjs/core": "^9.16.1",
-    "@neivara/shared": "0.1.0",
+    "@neivara/shared": "0.2.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "socket.io-client": "^4.8.3"

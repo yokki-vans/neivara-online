@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "generationDate": "2026-07-10",
+  "generatedBy": "OpenAI built-in image generation via Codex",
+  "ownershipBasis": "Original project briefs and generated outputs, subject to the OpenAI service terms applicable to the repository owner's account on the generation date",
+  "reviewStatus": "No third-party logos, text, named characters, or supplied reference images were used; commercial release still requires owner legal review",
+  "assets": [
+    {
+      "id": "neivara-ground",
+      "originOutputName": "exec-7adb423b-cbd1-45ca-af7b-361b99cfb2fe.png",
+      "sourcePath": "docs/art/source/neivara-ground.png",
+      "sourceSha256": "c09d93ef1db18bf402da63fae0fdca5744011a283fe9f99aaeae5d254dfb673b",
+      "runtimePath": "apps/client/public/assets/textures/neivara-ground.jpg",
+      "runtimeSha256": "feeb59a80cc9b55dd2f07ceedeccc444755a783e3d9976ed20348337004ca1fc"
+    },
+    {
+      "id": "neivara-stone-path",
+      "originOutputName": "exec-6a573c97-4819-4789-b957-c0fa3c649bec.png",
+      "sourcePath": "docs/art/source/neivara-stone-path.png",
+      "sourceSha256": "9e0972b958afdbefa782a46d1dbd129375cbf2dcc729d5aa43d6ae695fc569bb",
+      "runtimePath": "apps/client/public/assets/textures/neivara-stone-path.jpg",
+      "runtimeSha256": "0e44029aa131a200a4b8cd8726341c452165d29b519446a1e2231c68262fbdd2"
+    },
+    {
+      "id": "neivara-character-lineup",
+      "originOutputName": "exec-2d4a78bb-0774-4cc4-878b-4eac8f64bf43.png",
+      "sourcePath": "docs/art/source/neivara-character-lineup.png",
+      "sourceSha256": "d1470f89439c5edb35e0849936ea51538869427981b36f45495b4d9f19194481",
+      "runtimePath": "apps/client/public/assets/concepts/neivara-character-lineup.jpg",
+      "runtimeSha256": "f3a13bd77f743a9dc7cd1c90c28d7cf997617bcbc9f04375bfd84e03a8a7774c"
+    },
+    {
+      "id": "neivara-equipment-sheet",
+      "originOutputName": "exec-4f121e4b-17f9-44a0-a7e7-4a905d007712.png",
+      "sourcePath": "docs/art/source/neivara-equipment-sheet.png",
+      "sourceSha256": "4d7730c6dcac44d184062dea5d3742abe796400b6f8fe5e43d2a635241c89379",
+      "runtimePath": "apps/client/public/assets/concepts/neivara-equipment-sheet.jpg",
+      "runtimeSha256": "241738ccaad5d3065532fe1799dc03d20147e3b439e500b3d51d748a2ad01de0"
+    }
+  ]
+}
