@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { PROTOCOL_VERSION } from "@neivara/shared";
 import { io } from "socket.io-client";
 
@@ -6,7 +6,7 @@ const baseUrl = (process.env.API_URL ?? "http://localhost:3001").replace(/\/$/, 
 
 function letters(length = 8) {
   const alphabet = "abcdefghijklmnopqrstuvwxyz";
-  return Array.from({ length }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
+  return Array.from(randomBytes(length), (byte) => alphabet[byte % alphabet.length]).join("");
 }
 
 async function request(path, init = {}, token) {
@@ -24,7 +24,7 @@ async function request(path, init = {}, token) {
 }
 
 async function createPlayer(label, race, classId) {
-  const suffix = `${Date.now().toString(36).slice(-6)}${Math.floor(Math.random() * 1_000).toString(36)}`;
+  const suffix = randomBytes(5).toString("hex");
   const auth = await request("/v1/auth/register", {
     method: "POST",
     body: JSON.stringify({ username: `smk_${label}_${suffix}`, password: "strong-smoke-password" }),

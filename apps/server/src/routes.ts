@@ -256,17 +256,25 @@ export function registerRoutes(
     },
   );
 
-  app.get("/v1/auth/me", async (request, reply) => {
-    const claims = await authenticate(request, reply, tokens);
-    if (!claims) return;
-    return { id: claims.accountId, username: claims.username };
-  });
+  app.get(
+    "/v1/auth/me",
+    { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } },
+    async (request, reply) => {
+      const claims = await authenticate(request, reply, tokens);
+      if (!claims) return;
+      return { id: claims.accountId, username: claims.username };
+    },
+  );
 
-  app.get("/v1/characters", async (request, reply) => {
-    const claims = await authenticate(request, reply, tokens);
-    if (!claims) return;
-    return { characters: await store.listCharacters(claims.accountId) };
-  });
+  app.get(
+    "/v1/characters",
+    { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } },
+    async (request, reply) => {
+      const claims = await authenticate(request, reply, tokens);
+      if (!claims) return;
+      return { characters: await store.listCharacters(claims.accountId) };
+    },
+  );
 
   app.post(
     "/v1/characters",
@@ -301,27 +309,31 @@ export function registerRoutes(
     },
   );
 
-  app.get<{ Params: { id: string } }>("/v1/characters/:id/inventory", async (request, reply) => {
-    const claims = await authenticate(request, reply, tokens);
-    if (!claims) return;
-    const character = await store.getCharacterForAccount(request.params.id, claims.accountId);
-    if (!character) {
-      return reply.code(404).send({ error: "not_found", message: "Персонаж не найден" });
-    }
-    const operation = async () => {
-      const currentCharacter =
-        (await store.getCharacterForAccount(character.id, claims.accountId)) ?? character;
-      const state = await store.getInventoryState(character.id);
-      inventoryRuntime?.mergeRuntimeInventoryState(character.id, state);
-      return {
-        ...inventoryResponse(currentCharacter, state),
-        quest: await store.getQuest(character.id),
+  app.get<{ Params: { id: string } }>(
+    "/v1/characters/:id/inventory",
+    { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } },
+    async (request, reply) => {
+      const claims = await authenticate(request, reply, tokens);
+      if (!claims) return;
+      const character = await store.getCharacterForAccount(request.params.id, claims.accountId);
+      if (!character) {
+        return reply.code(404).send({ error: "not_found", message: "Персонаж не найден" });
+      }
+      const operation = async () => {
+        const currentCharacter =
+          (await store.getCharacterForAccount(character.id, claims.accountId)) ?? character;
+        const state = await store.getInventoryState(character.id);
+        inventoryRuntime?.mergeRuntimeInventoryState(character.id, state);
+        return {
+          ...inventoryResponse(currentCharacter, state),
+          quest: await store.getQuest(character.id),
+        };
       };
-    };
-    return inventoryRuntime
-      ? await inventoryRuntime.runCharacterOperation(character.id, operation)
-      : await operation();
-  });
+      return inventoryRuntime
+        ? await inventoryRuntime.runCharacterOperation(character.id, operation)
+        : await operation();
+    },
+  );
 
   app.post<{
     Params: { id: string; instanceId: string };
