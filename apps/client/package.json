@@ -1,6 +1,6 @@
 {
   "name": "@neivara/client",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
@@ -8,12 +8,13 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "vitest run src/inventoryReliability.test.ts src/inventoryPresentation.test.ts",
+    "test": "vitest run src/inventoryReliability.test.ts src/inventoryPresentation.test.ts src/skills/skillVisuals.test.ts src/game/skillFx.test.ts src/game/modelAssets.test.ts src/game/previewLoadSequence.test.ts src/game/surfaceGeometry.test.ts src/characterModels.test.ts src/contentCompatibility.test.ts src/game/sceneLoadErrors.test.ts src/api.test.ts",
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
     "@babylonjs/core": "^9.16.1",
-    "@neivara/shared": "0.2.0",
+    "@babylonjs/loaders": "^9.16.1",
+    "@neivara/shared": "0.3.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "socket.io-client": "^4.8.3"

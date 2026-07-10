@@ -3,10 +3,13 @@ import {
   CLASSES,
   CONTENT_VERSION,
   EQUIPMENT_SLOT_LABELS,
+  GENDERS,
   ITEM_CATALOG,
   ITEM_GRADE_DEFINITIONS,
+  MONSTER_DEFINITIONS,
   PROTOCOL_VERSION,
   RACES,
+  STARTER_ZONE,
   createCharacterSchema,
   enhanceItemInputSchema,
   equipItemInputSchema,
@@ -179,35 +182,57 @@ export function registerRoutes(
     ): void;
   },
 ): void {
-  app.get("/healthz", async () => ({ status: "ok", service: "neivara-server" }));
-  app.get("/readyz", async (_request, reply) => {
-    let ready: boolean;
+  const readinessCacheTtlMs = 1_000;
+  let readinessCache: { checkedAt: number; ready: boolean } | null = null;
+  let readinessCheck: Promise<boolean> | null = null;
+  const currentReadiness = async (): Promise<boolean> => {
+    const now = Date.now();
+    if (readinessCache && now - readinessCache.checkedAt < readinessCacheTtlMs) {
+      return readinessCache.ready;
+    }
+    readinessCheck ??= store.checkReadiness()
+      .catch(() => false)
+      .then((ready) => {
+        readinessCache = { checkedAt: Date.now(), ready };
+        return ready;
+      });
     try {
-      ready = await store.checkReadiness();
-    } catch {
-      return reply.code(503).send({ status: "not_ready" });
+      return await readinessCheck;
+    } finally {
+      readinessCheck = null;
     }
-    if (!ready) {
-      return reply.code(503).send({ status: "not_ready" });
-    }
-    return { status: "ready" };
-  });
+  };
 
-  app.get("/v1/catalog", async () => ({
-    protocolVersion: PROTOCOL_VERSION,
-    contentVersion: CONTENT_VERSION,
-    races: RACES,
-    classes: CLASSES,
-    abilities: ABILITIES,
-    items: ITEM_CATALOG,
-    equipmentSlots: EQUIPMENT_SLOT_LABELS,
-    itemGrades: ITEM_GRADE_DEFINITIONS,
-    zone: {
-      id: "silent_wellspring_vale",
-      name: "Долина Тихих Истоков",
-      description: "Первый общий регион Нейвары с поселением, охотничьими угодьями и ареной.",
+  app.get("/healthz", async () => ({ status: "ok", service: "neivara-server" }));
+  app.get(
+    "/readyz",
+    { config: { rateLimit: { max: 300, timeWindow: "1 minute" } } },
+    async (_request, reply) => {
+      const ready = await currentReadiness();
+      if (!ready) {
+        return reply.code(503).send({ status: "not_ready" });
+      }
+      return { status: "ready" };
     },
-  }));
+  );
+
+  app.get(
+    "/v1/catalog",
+    { config: { rateLimit: { max: 180, timeWindow: "1 minute" } } },
+    async () => ({
+      protocolVersion: PROTOCOL_VERSION,
+      contentVersion: CONTENT_VERSION,
+      races: RACES,
+      genders: GENDERS,
+      classes: CLASSES,
+      abilities: ABILITIES,
+      items: ITEM_CATALOG,
+      equipmentSlots: EQUIPMENT_SLOT_LABELS,
+      itemGrades: ITEM_GRADE_DEFINITIONS,
+      monsters: Object.values(MONSTER_DEFINITIONS),
+      zone: STARTER_ZONE,
+    }),
+  );
 
   app.post(
     "/v1/auth/register",
@@ -292,6 +317,7 @@ export function registerRoutes(
           accountId: claims.accountId,
           name: parsed.data.name,
           race: parsed.data.race,
+          gender: parsed.data.gender,
           classId: parsed.data.classId,
           hp: classDefinition.baseHp,
           mp: classDefinition.baseMp,

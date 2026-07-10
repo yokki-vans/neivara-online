@@ -16,8 +16,12 @@ const schemaName = `neivara_integration_${randomUUID().replaceAll("-", "")}`;
 const quotedSchemaName = `"${schemaName}"`;
 
 function connectionStringForSchema(connectionString: string): string {
+  return connectionStringForNamedSchema(connectionString, schemaName);
+}
+
+function connectionStringForNamedSchema(connectionString: string, targetSchema: string): string {
   const url = new URL(connectionString);
-  url.searchParams.set("options", `-c search_path=${schemaName},public`);
+  url.searchParams.set("options", `-c search_path=${targetSchema},public`);
   return url.toString();
 }
 
@@ -60,12 +64,12 @@ integrationDescribe("PostgreSQL equipment and economy integration", () => {
     await expect(store.checkReadiness()).resolves.toBe(true);
 
     const account = await store.createAccount("PostgresGate", "integration-password-hash");
-    const classDefinition = getClass("warbound");
+    const classDefinition = getClass("warrior");
     const character = await store.createCharacter({
       accountId: account.id,
       name: "СтражГрани",
-      race: "erim",
-      classId: "warbound",
+      race: "human",
+      classId: "warrior",
       hp: classDefinition.baseHp,
       mp: classDefinition.baseMp,
     });
@@ -226,8 +230,8 @@ integrationDescribe("PostgreSQL equipment and economy integration", () => {
     const otherCharacter = await store.createCharacter({
       accountId: account.id,
       name: "ДругойСтраж",
-      race: "erim",
-      classId: "warbound",
+      race: "human",
+      classId: "warrior",
       hp: classDefinition.baseHp,
       mp: classDefinition.baseMp,
     });
@@ -317,6 +321,176 @@ integrationDescribe("PostgreSQL equipment and economy integration", () => {
     expect(lootClaims.rows[0]?.count).toBe("1");
   }, 30_000);
 
+  it("expands v7 without rewriting v0.2 identities and normalizes every store read", async () => {
+    const legacySchema = `neivara_legacy_${randomUUID().replaceAll("-", "")}`;
+    const quotedLegacySchema = `"${legacySchema}"`;
+    const legacyDatabaseUrl = connectionStringForNamedSchema(databaseUrl, legacySchema);
+    const legacyPool = new Pool({
+      connectionString: legacyDatabaseUrl,
+    });
+    const legacyStore = new PostgresGameStore(legacyDatabaseUrl, false, true, () => 0);
+    try {
+      await adminPool.query(`CREATE SCHEMA ${quotedLegacySchema}`);
+      await legacyPool.query(`
+        CREATE TABLE schema_migrations (
+          version INTEGER PRIMARY KEY,
+          name TEXT NOT NULL,
+          applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `);
+      for (const migration of MIGRATIONS.slice(0, -1)) {
+        await legacyPool.query(migration.sql);
+        await legacyPool.query(
+          "INSERT INTO schema_migrations(version, name) VALUES($1, $2)",
+          [migration.version, migration.name],
+        );
+      }
+      const accountId = randomUUID();
+      await legacyPool.query(
+        `INSERT INTO accounts(id, username, username_key, password_hash)
+         VALUES($1, 'LegacyGate', 'legacygate', 'hash')`,
+        [accountId],
+      );
+      const legacyIdentities = [
+        ["erim", "warbound", "human", "warrior"],
+        ["vaeli", "pathfinder", "light_elf", "warrior"],
+        ["narai", "runesmith", "dark_elf", "mage"],
+        ["kerran", "lifewarden", "dwarf", "mage"],
+        ["dairi", "oathweaver", "orc", "mage"],
+      ] as const;
+      const legacyCharacterIds: string[] = [];
+      for (const [index, [race, classId]] of legacyIdentities.entries()) {
+        const characterId = randomUUID();
+        legacyCharacterIds.push(characterId);
+        await legacyPool.query(
+          `INSERT INTO characters(
+             id, account_id, name, name_key, race, class_id, hp, mp
+           ) VALUES($1, $2, $3, $4, $5, $6, 100, 100)`,
+          [characterId, accountId, `Legacy${index}`, `legacy${index}`, race, classId],
+        );
+      }
+
+      await legacyStore.initialize();
+      const persisted = await legacyPool.query<{
+        name: string;
+        race: string;
+        gender: string;
+        class_id: string;
+      }>("SELECT name, race, gender, class_id FROM characters ORDER BY name");
+      expect(persisted.rows).toEqual([
+        { name: "Legacy0", race: "erim", gender: "male", class_id: "warbound" },
+        { name: "Legacy1", race: "vaeli", gender: "male", class_id: "pathfinder" },
+        { name: "Legacy2", race: "narai", gender: "male", class_id: "runesmith" },
+        { name: "Legacy3", race: "kerran", gender: "male", class_id: "lifewarden" },
+        { name: "Legacy4", race: "dairi", gender: "male", class_id: "oathweaver" },
+      ]);
+
+      const roster = (await legacyStore.listCharacters(accountId)).sort((left, right) =>
+        left.name.localeCompare(right.name),
+      );
+      for (const [index, [, , expectedRace, expectedClass]] of legacyIdentities.entries()) {
+        expect(roster[index]).toMatchObject({
+          name: `Legacy${index}`,
+          race: expectedRace,
+          gender: "male",
+          classId: expectedClass,
+        });
+      }
+
+      await expect(
+        legacyStore.getCharacterForAccount(legacyCharacterIds[2]!, accountId),
+      ).resolves.toMatchObject({
+        race: "dark_elf",
+        gender: "male",
+        classId: "mage",
+      });
+
+      const postExpandLegacyId = randomUUID();
+      await legacyPool.query(
+        `INSERT INTO characters(
+           id, account_id, name, name_key, race, class_id, hp, mp
+         ) VALUES($1, $2, 'LegacyAfterExpand', 'legacyafterexpand', 'erim', 'pathfinder', 100, 100)`,
+        [postExpandLegacyId, accountId],
+      );
+      await expect(
+        legacyStore.getCharacterForAccount(postExpandLegacyId, accountId),
+      ).resolves.toMatchObject({
+        race: "human",
+        gender: "male",
+        classId: "warrior",
+      });
+
+      const mage = getClass("mage");
+      const canonicalCharacter = await legacyStore.createCharacter({
+        accountId,
+        name: "CanonicalAfterExpand",
+        race: "orc",
+        gender: "female",
+        classId: "mage",
+        hp: mage.baseHp,
+        mp: mage.baseMp,
+      });
+      const coexistenceRows = await legacyPool.query<{
+        name: string;
+        race: string;
+        gender: string;
+        class_id: string;
+      }>(
+        `SELECT name, race, gender, class_id
+         FROM characters
+         WHERE id IN ($1, $2)
+         ORDER BY name`,
+        [postExpandLegacyId, canonicalCharacter.id],
+      );
+      expect(coexistenceRows.rows).toEqual([
+        {
+          name: "CanonicalAfterExpand",
+          race: "orc",
+          gender: "female",
+          class_id: "mage",
+        },
+        {
+          name: "LegacyAfterExpand",
+          race: "erim",
+          gender: "male",
+          class_id: "pathfinder",
+        },
+      ]);
+
+      await legacyStore.addInventoryItem(legacyCharacterIds[2]!, "field_tonic", 1);
+      const legacyInventory = await legacyStore.getInventoryState(legacyCharacterIds[2]!);
+      const tonic = legacyInventory.inventory.items.find(({ itemId }) => itemId === "field_tonic")!;
+      const used = await legacyStore.useItem(
+        legacyCharacterIds[2]!,
+        tonic.instanceId,
+        "legacy-identity-use-0001",
+      );
+      expect(used.result).toMatchObject({
+        characterClassId: "mage",
+        restoredHp: 15,
+      });
+
+      const identityAfterLockedOperations = await legacyPool.query<{
+        race: string;
+        class_id: string;
+      }>("SELECT race, class_id FROM characters WHERE id = $1", [legacyCharacterIds[2]]);
+      expect(identityAfterLockedOperations.rows[0]).toEqual({
+        race: "narai",
+        class_id: "runesmith",
+      });
+
+      await expect(
+        legacyPool.query("UPDATE characters SET race = 'unknown_race' WHERE id = $1", [
+          legacyCharacterIds[0],
+        ]),
+      ).rejects.toMatchObject({ code: "23514" });
+    } finally {
+      await legacyStore.close();
+      await legacyPool.end();
+      await adminPool.query(`DROP SCHEMA IF EXISTS ${quotedLegacySchema} CASCADE`);
+    }
+  }, 30_000);
+
   it("reports unready when the latest schema version is not recorded", async () => {
     const latestMigration = MIGRATIONS.at(-1)!;
     await adminPool.query(
@@ -373,7 +547,7 @@ integrationDescribe("PostgreSQL equipment and economy integration", () => {
       );
       await lockClient.query("BEGIN");
       await lockClient.query(
-        `LOCK TABLE ${quotedSchemaName}.loot_claims IN ACCESS EXCLUSIVE MODE`,
+        `LOCK TABLE ${quotedSchemaName}.characters IN ACCESS EXCLUSIVE MODE`,
       );
       const startedAt = Date.now();
       await expect(blockedStore.initialize()).rejects.toThrow(/lock timeout/i);
@@ -393,12 +567,12 @@ integrationDescribe("PostgreSQL equipment and economy integration", () => {
 
   it("reads gold and item instances from one repeatable snapshot", async () => {
     const account = await store.createAccount("SnapshotGate", "integration-password-hash");
-    const classDefinition = getClass("warbound");
+    const classDefinition = getClass("warrior");
     const character = await store.createCharacter({
       accountId: account.id,
       name: "ХранительСнимка",
-      race: "erim",
-      classId: "warbound",
+      race: "human",
+      classId: "warrior",
       hp: classDefinition.baseHp,
       mp: classDefinition.baseMp,
     });

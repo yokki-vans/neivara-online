@@ -101,12 +101,12 @@ describe("world persistence serialization", () => {
   it("keeps a periodic flush outside the inventory mutation/reconciliation window", async () => {
     const store = new TrackingMemoryStore(() => 0);
     const account = await store.createAccount("queue-user", "hash");
-    const classDefinition = getClass("warbound");
+    const classDefinition = getClass("warrior");
     const created = await store.createCharacter({
       accountId: account.id,
       name: "Очередник",
-      race: "erim",
-      classId: "warbound",
+      race: "human",
+      classId: "warrior",
       hp: classDefinition.baseHp,
       mp: classDefinition.baseMp,
     });
@@ -166,12 +166,12 @@ describe("world persistence serialization", () => {
   it("reuses a gold operation id after a committed flush loses its ACK", async () => {
     const store = new PostCommitAckFailureStore();
     const account = await store.createAccount("gold-ack-user", "hash");
-    const classDefinition = getClass("warbound");
+    const classDefinition = getClass("warrior");
     const character = await store.createCharacter({
       accountId: account.id,
       name: "НадёжныйСчёт",
-      race: "erim",
-      classId: "warbound",
+      race: "human",
+      classId: "warrior",
       hp: classDefinition.baseHp,
       mp: classDefinition.baseMp,
     });
@@ -207,12 +207,12 @@ describe("world persistence serialization", () => {
   it("emits one inventory update for a realtime loot pickup", async () => {
     const store = new TrackingMemoryStore();
     const account = await store.createAccount("pickup-user", "hash");
-    const classDefinition = getClass("warbound");
+    const classDefinition = getClass("warrior");
     const character = await store.createCharacter({
       accountId: account.id,
       name: "Сборщик",
-      race: "erim",
-      classId: "warbound",
+      race: "human",
+      classId: "warrior",
       hp: classDefinition.baseHp,
       mp: classDefinition.baseMp,
     });
@@ -246,7 +246,7 @@ describe("world persistence serialization", () => {
       expiresAt: Date.now() + 10_000,
       audit: {
         sourceMonsterId: "monster-1",
-        sourceMonsterKind: "mireling",
+        sourceMonsterKind: "thorn_prowler",
         sourceMonsterElite: false,
         rareRoll: 4_321,
         rareChanceBps: 0,
@@ -272,12 +272,12 @@ describe("world persistence serialization", () => {
   it("does not duplicate loot after commit succeeds but the pickup ACK is lost", async () => {
     const store = new PostCommitAckFailureStore();
     const account = await store.createAccount("loot-ack-user", "hash");
-    const classDefinition = getClass("warbound");
+    const classDefinition = getClass("warrior");
     const character = await store.createCharacter({
       accountId: account.id,
       name: "НадёжныйСбор",
-      race: "erim",
-      classId: "warbound",
+      race: "human",
+      classId: "warrior",
       hp: classDefinition.baseHp,
       mp: classDefinition.baseMp,
     });
@@ -315,12 +315,12 @@ describe("world persistence serialization", () => {
   it("refreshes a buff from the same source item instead of stacking it", async () => {
     const store = new TrackingMemoryStore();
     const account = await store.createAccount("buff-user", "hash");
-    const classDefinition = getClass("warbound");
+    const classDefinition = getClass("warrior");
     const character = await store.createCharacter({
       accountId: account.id,
       name: "Освежитель",
-      race: "erim",
-      classId: "warbound",
+      race: "human",
+      classId: "warrior",
       hp: classDefinition.baseHp,
       mp: classDefinition.baseMp,
     });
@@ -352,12 +352,12 @@ describe("world persistence serialization", () => {
   it("applies restorative deltas without overwriting newer combat damage", async () => {
     const store = new TrackingMemoryStore();
     const account = await store.createAccount("vital-race-user", "hash");
-    const classDefinition = getClass("warbound");
+    const classDefinition = getClass("warrior");
     const character = await store.createCharacter({
       accountId: account.id,
       name: "Живучий",
-      race: "erim",
-      classId: "warbound",
+      race: "human",
+      classId: "warrior",
       hp: classDefinition.baseHp,
       mp: classDefinition.baseMp,
     });
@@ -377,12 +377,12 @@ describe("world persistence serialization", () => {
   it("does not create a ghost when a socket disconnects during join", async () => {
     const store = new DelayedInventoryStore();
     const account = await store.createAccount("join-race-user", "hash");
-    const classDefinition = getClass("warbound");
+    const classDefinition = getClass("warrior");
     const character = await store.createCharacter({
       accountId: account.id,
       name: "Исчезающий",
-      race: "erim",
-      classId: "warbound",
+      race: "human",
+      classId: "warrior",
       hp: classDefinition.baseHp,
       mp: classDefinition.baseMp,
     });
@@ -402,12 +402,12 @@ describe("world persistence serialization", () => {
   it("resumes cooldowns, buffs, mitigation and death state during reconnect grace", async () => {
     const store = new TrackingMemoryStore();
     const account = await store.createAccount("resume-user", "hash");
-    const classDefinition = getClass("warbound");
+    const classDefinition = getClass("warrior");
     const character = await store.createCharacter({
       accountId: account.id,
       name: "Возвращающийся",
-      race: "erim",
-      classId: "warbound",
+      race: "human",
+      classId: "warrior",
       hp: classDefinition.baseHp,
       mp: classDefinition.baseMp,
     });
@@ -431,7 +431,7 @@ describe("world persistence serialization", () => {
         }
       >;
     }).players.get(character.id)!;
-    runtime.cooldowns.set("iron_vow", now + 45_000);
+    runtime.cooldowns.set("vanguard_strike", now + 45_000);
     runtime.damageReductionUntil = now + 3_000;
     runtime.activeBuffs.push({
       sourceItemId: "warding_salve",
@@ -452,7 +452,7 @@ describe("world persistence serialization", () => {
     expect(resumed.alive).toBe(false);
     expect(resumed.hp).toBe(0);
     expect(resumed.respawnAt).toBe(now + 4_000);
-    expect(resumed.cooldowns.get("iron_vow")).toBe(now + 45_000);
+    expect(resumed.cooldowns.get("vanguard_strike")).toBe(now + 45_000);
     expect(resumed.damageReductionUntil).toBe(now + 3_000);
     expect(resumed.activeBuffs).toEqual([
       {
@@ -466,12 +466,12 @@ describe("world persistence serialization", () => {
   it("preserves resume state when a new socket replaces an active socket", async () => {
     const store = new TrackingMemoryStore();
     const account = await store.createAccount("replace-socket-user", "hash");
-    const classDefinition = getClass("warbound");
+    const classDefinition = getClass("warrior");
     const character = await store.createCharacter({
       accountId: account.id,
       name: "СменяющийСвязь",
-      race: "erim",
-      classId: "warbound",
+      race: "human",
+      classId: "warrior",
       hp: classDefinition.baseHp,
       mp: classDefinition.baseMp,
     });
@@ -481,7 +481,7 @@ describe("world persistence serialization", () => {
     const original = (world as unknown as {
       players: Map<string, { cooldowns: Map<string, number> }>;
     }).players.get(character.id)!;
-    original.cooldowns.set("iron_vow", readyAt);
+    original.cooldowns.set("vanguard_strike", readyAt);
 
     await world.join(fakeSocket(undefined, "socket-2"), character);
 
@@ -489,18 +489,18 @@ describe("world persistence serialization", () => {
       players: Map<string, { socketId: string; cooldowns: Map<string, number> }>;
     }).players.get(character.id)!;
     expect(replacement.socketId).toBe("socket-2");
-    expect(replacement.cooldowns.get("iron_vow")).toBe(readyAt);
+    expect(replacement.cooldowns.get("vanguard_strike")).toBe(readyAt);
   });
 
   it("joins a persisted zero-HP character as dead when no resume state exists", async () => {
     const store = new TrackingMemoryStore();
     const account = await store.createAccount("dead-load-user", "hash");
-    const classDefinition = getClass("warbound");
+    const classDefinition = getClass("warrior");
     const character = await store.createCharacter({
       accountId: account.id,
       name: "Павший",
-      race: "erim",
-      classId: "warbound",
+      race: "human",
+      classId: "warrior",
       hp: classDefinition.baseHp,
       mp: classDefinition.baseMp,
     });
@@ -531,12 +531,12 @@ describe("world persistence serialization", () => {
   it("quiesces and clears runtime players before the store is closed", async () => {
     const store = new TrackingMemoryStore();
     const account = await store.createAccount("shutdown-user", "hash");
-    const classDefinition = getClass("warbound");
+    const classDefinition = getClass("warrior");
     const character = await store.createCharacter({
       accountId: account.id,
       name: "Завершающий",
-      race: "erim",
-      classId: "warbound",
+      race: "human",
+      classId: "warrior",
       hp: classDefinition.baseHp,
       mp: classDefinition.baseMp,
     });

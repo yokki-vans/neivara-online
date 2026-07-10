@@ -90,8 +90,8 @@ function cloneItem(item: ItemInstance): ItemInstance {
 }
 
 function toSummary(record: CharacterRecord): CharacterSummary {
-  const { id, name, race, classId, level, xp, gold, lastSeenAt } = record;
-  return { id, name, race, classId, level, xp, gold, lastSeenAt };
+  const { id, name, race, gender, classId, level, xp, gold, lastSeenAt } = record;
+  return { id, name, race, gender, classId, level, xp, gold, lastSeenAt };
 }
 
 export class MemoryGameStore implements GameStore {
@@ -170,6 +170,7 @@ export class MemoryGameStore implements GameStore {
       accountId: input.accountId,
       name: input.name,
       race: input.race,
+      gender: input.gender ?? "male",
       classId: input.classId,
       level: 1,
       xp: 0,

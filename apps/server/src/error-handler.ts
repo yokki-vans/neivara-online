@@ -1,6 +1,7 @@
 import type { FastifyError, FastifyInstance } from "fastify";
 
 function clientErrorMessage(statusCode: number): string {
+  if (statusCode === 403) return "Доступ запрещён";
   if (statusCode === 404) return "Ресурс не найден";
   if (statusCode === 413) return "Запрос слишком большой";
   if (statusCode === 429) return "Слишком много запросов";
@@ -13,8 +14,6 @@ function clientErrorMessage(statusCode: number): string {
  */
 export function installProductionErrorHandler(app: FastifyInstance): void {
   app.setErrorHandler((error: FastifyError, request, reply) => {
-    request.log.error({ err: error }, "Unhandled request error");
-
     const suppliedStatus = error.statusCode;
     const statusCode =
       typeof suppliedStatus === "number" && suppliedStatus >= 400 && suppliedStatus < 500
@@ -27,6 +26,8 @@ export function installProductionErrorHandler(app: FastifyInstance): void {
         message: clientErrorMessage(statusCode),
       });
     }
+
+    request.log.error({ err: error }, "Unhandled request error");
 
     return reply.code(500).send({
       error: "internal_error",

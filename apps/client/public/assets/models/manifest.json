@@ -1,0 +1,772 @@
+{
+  "version": "1.0.0",
+  "generator": "tools/generate_3d_assets.py",
+  "seed": 7012026,
+  "license": "Proprietary project-original clean-room assets; repository LICENSE applies",
+  "coordinateSystem": "glTF 2.0, metres, Y-up at runtime",
+  "animationContract": {
+    "humanoid": [
+      "idle",
+      "run",
+      "attack",
+      "cast",
+      "hit",
+      "death"
+    ],
+    "monster": [
+      "idle",
+      "run",
+      "attack",
+      "hit",
+      "death"
+    ]
+  },
+  "assets": [
+    {
+      "id": "humanoid.human.male.warrior",
+      "kind": "humanoid",
+      "race": "human",
+      "gender": "male",
+      "archetype": "warrior",
+      "url": "./humanoids/human/male-warrior.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 501520,
+        "sha256": "bcc83eb0e8de9f18e087dfc4fd3210cacb0446727707842a2906bdf8ecb8917b",
+        "meshes": 65,
+        "triangles": 11924,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "cast",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 1
+      }
+    },
+    {
+      "id": "humanoid.human.male.mage",
+      "kind": "humanoid",
+      "race": "human",
+      "gender": "male",
+      "archetype": "mage",
+      "url": "./humanoids/human/male-mage.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 508076,
+        "sha256": "16cb2f14dadb0a900bbe75dc70f9ff758bbbb84bef7e0c2781c0c8e546001d8d",
+        "meshes": 65,
+        "triangles": 11990,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "cast",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 1
+      }
+    },
+    {
+      "id": "humanoid.human.female.warrior",
+      "kind": "humanoid",
+      "race": "human",
+      "gender": "female",
+      "archetype": "warrior",
+      "url": "./humanoids/human/female-warrior.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 503080,
+        "sha256": "c8e9dfc0bf6574f34a69b0d603626be2ae3a0c9c09a7a994613945403967715e",
+        "meshes": 65,
+        "triangles": 11972,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "cast",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 1
+      }
+    },
+    {
+      "id": "humanoid.human.female.mage",
+      "kind": "humanoid",
+      "race": "human",
+      "gender": "female",
+      "archetype": "mage",
+      "url": "./humanoids/human/female-mage.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 509636,
+        "sha256": "6b8f32e5eeb6ef7f8290dc9bf400a791e6180af4e6e4943d0deead919923e5da",
+        "meshes": 65,
+        "triangles": 12038,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "cast",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 1
+      }
+    },
+    {
+      "id": "humanoid.light_elf.male.warrior",
+      "kind": "humanoid",
+      "race": "light_elf",
+      "gender": "male",
+      "archetype": "warrior",
+      "url": "./humanoids/light_elf/male-warrior.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 503552,
+        "sha256": "7d646cd7fb01870d42b68ce0142b3bc4cf7f9f2f37330ca078114fddf19cc8c7",
+        "meshes": 65,
+        "triangles": 11956,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "cast",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 1
+      }
+    },
+    {
+      "id": "humanoid.light_elf.male.mage",
+      "kind": "humanoid",
+      "race": "light_elf",
+      "gender": "male",
+      "archetype": "mage",
+      "url": "./humanoids/light_elf/male-mage.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 506544,
+        "sha256": "c41ee762c955eee8588c0dad5fb7b6212b7e696ff5109e4d24cd2f7e073caaee",
+        "meshes": 65,
+        "triangles": 11926,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "cast",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 1
+      }
+    },
+    {
+      "id": "humanoid.light_elf.female.warrior",
+      "kind": "humanoid",
+      "race": "light_elf",
+      "gender": "female",
+      "archetype": "warrior",
+      "url": "./humanoids/light_elf/female-warrior.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 503556,
+        "sha256": "e97130c171e8a3ce59bea2d81e6d4deff539505face2f550f3f60cabaf161fb9",
+        "meshes": 65,
+        "triangles": 11956,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "cast",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 1
+      }
+    },
+    {
+      "id": "humanoid.light_elf.female.mage",
+      "kind": "humanoid",
+      "race": "light_elf",
+      "gender": "female",
+      "archetype": "mage",
+      "url": "./humanoids/light_elf/female-mage.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 505244,
+        "sha256": "3c9bc48be6aeb142f6862b6a654e6f66d5d2111322d8342e959570af0dec0da5",
+        "meshes": 65,
+        "triangles": 11926,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "cast",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 1
+      }
+    },
+    {
+      "id": "humanoid.dark_elf.male.warrior",
+      "kind": "humanoid",
+      "race": "dark_elf",
+      "gender": "male",
+      "archetype": "warrior",
+      "url": "./humanoids/dark_elf/male-warrior.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 504724,
+        "sha256": "7fe6ec506afa4e5daa6d8e39120916f0f86734b5d453917a70c140c1af28865f",
+        "meshes": 65,
+        "triangles": 12020,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "cast",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 1
+      }
+    },
+    {
+      "id": "humanoid.dark_elf.male.mage",
+      "kind": "humanoid",
+      "race": "dark_elf",
+      "gender": "male",
+      "archetype": "mage",
+      "url": "./humanoids/dark_elf/male-mage.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 509536,
+        "sha256": "a6c9ab2f3ccd85204b01db75eaf19f5334dff711fc518772dfb314cb7468d711",
+        "meshes": 65,
+        "triangles": 12022,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "cast",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 1
+      }
+    },
+    {
+      "id": "humanoid.dark_elf.female.warrior",
+      "kind": "humanoid",
+      "race": "dark_elf",
+      "gender": "female",
+      "archetype": "warrior",
+      "url": "./humanoids/dark_elf/female-warrior.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 503432,
+        "sha256": "17db9b741f2903c5f65f09dbcfa769caa57e56a32208ccfa5740de7643b71031",
+        "meshes": 65,
+        "triangles": 12020,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "cast",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 1
+      }
+    },
+    {
+      "id": "humanoid.dark_elf.female.mage",
+      "kind": "humanoid",
+      "race": "dark_elf",
+      "gender": "female",
+      "archetype": "mage",
+      "url": "./humanoids/dark_elf/female-mage.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 508244,
+        "sha256": "f216a3002b6a8774392ca1d92131199fb42e99b12ae0e725716e3223b0f2f8a1",
+        "meshes": 65,
+        "triangles": 12022,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "cast",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 1
+      }
+    },
+    {
+      "id": "humanoid.dwarf.male.warrior",
+      "kind": "humanoid",
+      "race": "dwarf",
+      "gender": "male",
+      "archetype": "warrior",
+      "url": "./humanoids/dwarf/male-warrior.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 521108,
+        "sha256": "c4f4d0a29c88930e2f2379d2cdeb8c332bbe181fce055e31fe538030796b8c01",
+        "meshes": 68,
+        "triangles": 12408,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "cast",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 1
+      }
+    },
+    {
+      "id": "humanoid.dwarf.male.mage",
+      "kind": "humanoid",
+      "race": "dwarf",
+      "gender": "male",
+      "archetype": "mage",
+      "url": "./humanoids/dwarf/male-mage.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 525264,
+        "sha256": "bdee3701cdc6888238a942207ef79f0581fc58f92ce2341c99e07ab655299db4",
+        "meshes": 68,
+        "triangles": 12426,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "cast",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 1
+      }
+    },
+    {
+      "id": "humanoid.dwarf.female.warrior",
+      "kind": "humanoid",
+      "race": "dwarf",
+      "gender": "female",
+      "archetype": "warrior",
+      "url": "./humanoids/dwarf/female-warrior.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 514472,
+        "sha256": "7fa83c4857e259c487de63bebc976592e1cc011f3ce85c5230694fab112b402d",
+        "meshes": 67,
+        "triangles": 12280,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "cast",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 1
+      }
+    },
+    {
+      "id": "humanoid.dwarf.female.mage",
+      "kind": "humanoid",
+      "race": "dwarf",
+      "gender": "female",
+      "archetype": "mage",
+      "url": "./humanoids/dwarf/female-mage.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 518632,
+        "sha256": "3c1ba9e3a2a86358a59314342b9e189fb202051f242709f86fe90cbdb5c4f0b5",
+        "meshes": 67,
+        "triangles": 12298,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "cast",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 1
+      }
+    },
+    {
+      "id": "humanoid.orc.male.warrior",
+      "kind": "humanoid",
+      "race": "orc",
+      "gender": "male",
+      "archetype": "warrior",
+      "url": "./humanoids/orc/male-warrior.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 492400,
+        "sha256": "943c8c4b1324c2605606f7d893fdddee80b11dd370c243d8e99d5492c6a72f32",
+        "meshes": 64,
+        "triangles": 11640,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "cast",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 1
+      }
+    },
+    {
+      "id": "humanoid.orc.male.mage",
+      "kind": "humanoid",
+      "race": "orc",
+      "gender": "male",
+      "archetype": "mage",
+      "url": "./humanoids/orc/male-mage.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 498096,
+        "sha256": "b62b6c0fcb6e094f7aa9688500f60bbc0f84164b249d28941fa130e6ff0f8a25",
+        "meshes": 64,
+        "triangles": 11722,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "cast",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 1
+      }
+    },
+    {
+      "id": "humanoid.orc.female.warrior",
+      "kind": "humanoid",
+      "race": "orc",
+      "gender": "female",
+      "archetype": "warrior",
+      "url": "./humanoids/orc/female-warrior.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 492400,
+        "sha256": "df294ca5746eecf5c7e87449714ca862e1c7ef704b1d219bc0dcd40e26105892",
+        "meshes": 64,
+        "triangles": 11640,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "cast",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 1
+      }
+    },
+    {
+      "id": "humanoid.orc.female.mage",
+      "kind": "humanoid",
+      "race": "orc",
+      "gender": "female",
+      "archetype": "mage",
+      "url": "./humanoids/orc/female-mage.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 498108,
+        "sha256": "71358430edb706d15c003a2de8ee0852db1d4cba546b209208149bce9091a987",
+        "meshes": 64,
+        "triangles": 11722,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "cast",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 1
+      }
+    },
+    {
+      "id": "monster.thorn_prowler",
+      "kind": "monster",
+      "url": "./monsters/thorn_prowler.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 240196,
+        "sha256": "869540d0ae02a3b9580a252e7563d5f319a2cbe00beee9c3612fd2be1eb8843a",
+        "meshes": 36,
+        "triangles": 5880,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 0
+      }
+    },
+    {
+      "id": "monster.moss_mauler",
+      "kind": "monster",
+      "url": "./monsters/moss_mauler.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 238692,
+        "sha256": "4dcec847a39d39caa9793c4465f71a5bce440fe29cf73351833dec8967f428b6",
+        "meshes": 33,
+        "triangles": 5984,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 0
+      }
+    },
+    {
+      "id": "monster.cave_shrieker",
+      "kind": "monster",
+      "url": "./monsters/cave_shrieker.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 163456,
+        "sha256": "db79b94424f95a356bc914081ee0fc4e82865a0e2f9f58e14d9adb96410a52c5",
+        "meshes": 24,
+        "triangles": 3544,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 0
+      }
+    },
+    {
+      "id": "monster.ruin_sentinel",
+      "kind": "monster",
+      "url": "./monsters/ruin_sentinel.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 168612,
+        "sha256": "2d0c65a7a1b78978ed3e76a4f92d19e7e3c371b54ee1c03f7721d210d49feb25",
+        "meshes": 21,
+        "triangles": 3896,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 0
+      }
+    },
+    {
+      "id": "monster.bramble_boar",
+      "kind": "monster",
+      "url": "./monsters/bramble_boar.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 253392,
+        "sha256": "3e669c964b37dd94bbcd18221fabf162181bb6cf91f6b501644c5b5f99eaf521",
+        "meshes": 42,
+        "triangles": 6168,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 0
+      }
+    },
+    {
+      "id": "monster.ember_drake",
+      "kind": "monster",
+      "url": "./monsters/ember_drake.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 293916,
+        "sha256": "4c4cc9b0b9051c2242e5e939e08454d6da6eb62357fd64b8f59890684c005bb3",
+        "meshes": 46,
+        "triangles": 7488,
+        "skins": 1,
+        "animations": [
+          "attack",
+          "death",
+          "hit",
+          "idle",
+          "run"
+        ],
+        "embeddedTextures": 0
+      }
+    },
+    {
+      "id": "architecture.sanctuary",
+      "kind": "architecture",
+      "url": "./architecture/sanctuary.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 560168,
+        "sha256": "f713134802e7bc6cb2b39e5abfbd4d3a057392cbca7cad8627579803fb89a0cb",
+        "meshes": 86,
+        "triangles": 13664,
+        "skins": 0,
+        "animations": [],
+        "embeddedTextures": 0
+      }
+    },
+    {
+      "id": "architecture.gatehouse",
+      "kind": "architecture",
+      "url": "./architecture/gatehouse.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 239628,
+        "sha256": "279d331f4fe05e66860b9fb635a7d51a47f56f707287d989baf9cd5462cd2deb",
+        "meshes": 36,
+        "triangles": 4828,
+        "skins": 0,
+        "animations": [],
+        "embeddedTextures": 0
+      }
+    },
+    {
+      "id": "architecture.dwelling",
+      "kind": "architecture",
+      "url": "./architecture/dwelling.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 436660,
+        "sha256": "f455b07b557fc11303ba6da06a31a54f3859b516b71fbec26600b614f5980473",
+        "meshes": 83,
+        "triangles": 12080,
+        "skins": 0,
+        "animations": [],
+        "embeddedTextures": 0
+      }
+    },
+    {
+      "id": "architecture.bridge",
+      "kind": "architecture",
+      "url": "./architecture/bridge.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 271328,
+        "sha256": "c403f0511581bd164344e4fc2142aab885a6fa70cbaee232afe52cb6e571a559",
+        "meshes": 42,
+        "triangles": 5936,
+        "skins": 0,
+        "animations": [],
+        "embeddedTextures": 0
+      }
+    },
+    {
+      "id": "prop.ancient_tree",
+      "kind": "prop",
+      "url": "./props/ancient_tree.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 382984,
+        "sha256": "3c866d9aa50c916b960b2a6d03e9382cbd68fd3093a3c82e9e414a4ba8ca4bb1",
+        "meshes": 95,
+        "triangles": 15528,
+        "skins": 0,
+        "animations": [],
+        "embeddedTextures": 0
+      }
+    },
+    {
+      "id": "prop.market_stall",
+      "kind": "prop",
+      "url": "./props/market_stall.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 165300,
+        "sha256": "b047778f4d94864b8014857191744786f950c13de5343e4d2dde0b14c092e045",
+        "meshes": 29,
+        "triangles": 4916,
+        "skins": 0,
+        "animations": [],
+        "embeddedTextures": 0
+      }
+    },
+    {
+      "id": "prop.waystone",
+      "kind": "prop",
+      "url": "./props/waystone.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 82672,
+        "sha256": "5e0c5896d5f32cc52aee1e7f2a9f572f6a6f134439898f48718772156746f796",
+        "meshes": 20,
+        "triangles": 3024,
+        "skins": 0,
+        "animations": [],
+        "embeddedTextures": 0
+      }
+    },
+    {
+      "id": "prop.rock_cluster",
+      "kind": "prop",
+      "url": "./props/rock_cluster.glb",
+      "scale": 1.0,
+      "stats": {
+        "bytes": 102172,
+        "sha256": "ea4c89f33fd1c819bee305cfa6eb119b10fd740bf522821b5119e2c386dbfc29",
+        "meshes": 27,
+        "triangles": 4376,
+        "skins": 0,
+        "animations": [],
+        "embeddedTextures": 0
+      }
+    }
+  ]
+}

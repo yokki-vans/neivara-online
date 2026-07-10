@@ -32,6 +32,8 @@ import {
   type UseItemApiResponse,
 } from "../api";
 import { InventoryPanel, type ItemAction } from "../components/InventoryPanel";
+import { displayZoneName } from "../contentCompatibility";
+import { SkillIcon } from "../components/SkillIcon";
 import { WorldCanvas, type VisualEquipmentLoadout } from "../game/WorldCanvas";
 import {
   canApplyInventoryMutationResponse,
@@ -177,6 +179,7 @@ export function GameScreen({ session, character, onExit, onSessionExpired }: Pro
     required: 3,
   });
   const [feed, setFeed] = useState<FeedEntry[]>([]);
+  const [combatCue, setCombatCue] = useState<CombatEvent | null>(null);
   const [chatText, setChatText] = useState("");
   const [cooldowns, setCooldowns] = useState<Partial<Record<AbilityId, number>>>({});
   const [pendingAbilities, setPendingAbilities] = useState<Partial<Record<AbilityId, number>>>({});
@@ -382,6 +385,7 @@ export function GameScreen({ session, character, onExit, onSessionExpired }: Pro
     socket.on("world:snapshot", setSnapshot);
     socket.on("combat:event", (event: CombatEvent) => {
       addFeed({ id: event.id, at: event.at, type: "combat", text: event.message });
+      setCombatCue(event);
     });
     socket.on("combat:ability-result", (result: AbilityUseResult) => {
       setPendingAbilities((current) => {
@@ -655,6 +659,7 @@ export function GameScreen({ session, character, onExit, onSessionExpired }: Pro
         selectedId={selectedId}
         ownEquipment={visualEquipment}
         inputBlocked={inventoryOpen}
+        combatEvent={combatCue}
         onSelect={select}
         onInput={move}
         onPickup={pickup}
@@ -663,7 +668,7 @@ export function GameScreen({ session, character, onExit, onSessionExpired }: Pro
       <header className="game-topbar hud-panel">
         <div className="zone-copy">
           <p className="eyebrow">Текущая область</p>
-          <strong>{snapshot?.zoneName ?? "Долина Тихих Истоков"}</strong>
+          <strong>{displayZoneName(snapshot?.zoneName)}</strong>
         </div>
         <div className={`connection-pill ${connection}`}>
           <span />
@@ -702,8 +707,8 @@ export function GameScreen({ session, character, onExit, onSessionExpired }: Pro
         {snapshot && <MiniMap snapshot={snapshot} />}
         <section className="quest-card hud-panel">
           <p className="eyebrow">Поручение</p>
-          <strong>Первые отголоски</strong>
-          <span>{quest.status === "completed" ? "Завершено" : "Рассейте топкие отголоски"}</span>
+          <strong>Зов переправы</strong>
+          <span>{quest.status === "completed" ? "Завершено" : "Обезопасьте подступы Донмера"}</span>
           <div className="quest-progress"><i style={{ width: `${(quest.current / quest.required) * 100}%` }} /></div>
           <small>{quest.current} / {quest.required}</small>
         </section>
@@ -744,8 +749,21 @@ export function GameScreen({ session, character, onExit, onSessionExpired }: Pro
           const remaining = Math.max(0, (cooldowns[ability.id] ?? 0) - Date.now());
           const pending = Boolean(pendingAbilities[ability.id]);
           return (
-            <button key={ability.id} onClick={() => useAbility(ability.id)} disabled={connection !== "online" || !own?.alive || pending || remaining > 0} title={ability.description}>
-              <span className="ability-glyph" style={{ background: ability.color }} />
+            <button
+              key={ability.id}
+              className={pending ? "ability-button is-casting" : "ability-button"}
+              onClick={() => useAbility(ability.id)}
+              disabled={connection !== "online" || !own?.alive || pending || remaining > 0}
+              title={ability.description}
+              aria-label={`${ability.name}. ${ability.description}`}
+              aria-keyshortcuts={ability.hotkey}
+              aria-busy={pending}
+            >
+              <SkillIcon
+                abilityId={ability.id}
+                roleHint={`${character.classId} ${classInfo.role}`}
+                active={pending}
+              />
               <strong>{ability.name}</strong>
               <kbd>{ability.hotkey}</kbd>
               {pending ? <i>…</i> : remaining > 0 && <i>{(remaining / 1000).toFixed(1)}</i>}

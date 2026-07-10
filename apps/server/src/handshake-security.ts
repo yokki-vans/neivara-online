@@ -1,6 +1,6 @@
 import type { IncomingMessage } from "node:http";
 import proxyAddr from "@fastify/proxy-addr";
-import type { TrustProxyConfig } from "./config.js";
+import { isAllowedRequestOrigin, type TrustProxyConfig } from "./config.js";
 import { TokenBucket } from "./realtime-security.js";
 
 const RESERVATION = Symbol("neivara-engine-handshake-reservation");
@@ -184,12 +184,15 @@ export class HandshakeAdmissionController {
 export class EngineHandshakeSecurity {
   private readonly resolveIp: (request: IncomingMessage) => string;
   private readonly admission: HandshakeAdmissionController;
+  private readonly allowedOrigins: ReadonlySet<string>;
 
   constructor(
     trustProxy: TrustProxyConfig,
+    allowedOrigins: readonly string[],
     options: HandshakeAdmissionOptions = DEFAULT_HANDSHAKE_ADMISSION,
   ) {
     this.resolveIp = createRequestIpResolver(trustProxy);
+    this.allowedOrigins = new Set(allowedOrigins);
     this.admission = new HandshakeAdmissionController(options);
   }
 
@@ -198,6 +201,10 @@ export class EngineHandshakeSecurity {
     callback: (error: string | null, accepted: boolean) => void,
   ): void {
     try {
+      if (!isAllowedRequestOrigin(request.headers.origin, this.allowedOrigins)) {
+        callback("Origin игрового соединения не разрешён", false);
+        return;
+      }
       const decision = this.admission.admit(this.resolveIp(request));
       if (!decision.accepted || decision.reservationId === null) {
         callback("Слишком много игровых соединений", false);

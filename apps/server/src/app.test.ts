@@ -25,20 +25,112 @@ async function testApp(store: MemoryGameStore = new MemoryGameStore()): Promise<
   return application;
 }
 
+async function productionTestApp(): Promise<Application> {
+  const store = new MemoryGameStore();
+  // The production guard checks the runtime store kind. Reuse the deterministic
+  // in-memory implementation here while exercising the real production error handler.
+  Object.defineProperty(store, "kind", { value: "postgres" });
+  const application = await createApplication({
+    config: loadConfig({
+      NODE_ENV: "production",
+      STORAGE_MODE: "postgres",
+      DATABASE_URL: "postgresql://example.invalid/neivara",
+      JWT_SECRET: "production-secret-that-is-longer-than-thirty-two-characters",
+      CLIENT_ORIGINS: "https://game.neivara.example",
+      LOG_LEVEL: "silent",
+    }),
+    store,
+    startWorld: false,
+    clientDistPath: null,
+  });
+  applications.push(application);
+  return application;
+}
+
 describe("account and character API", () => {
   it("reports dependency readiness and fails with 503 when the store is unavailable", async () => {
+    class CountingReadyStore extends MemoryGameStore {
+      readinessChecks = 0;
+
+      override async checkReadiness(): Promise<boolean> {
+        this.readinessChecks += 1;
+        return true;
+      }
+    }
     class UnreadyStore extends MemoryGameStore {
       override async checkReadiness(): Promise<boolean> {
         return false;
       }
     }
-    const readyApplication = await testApp();
+    class ThrowingStore extends MemoryGameStore {
+      override async checkReadiness(): Promise<boolean> {
+        throw new Error("dependency unavailable");
+      }
+    }
+    const readyStore = new CountingReadyStore();
+    const readyApplication = await testApp(readyStore);
     const unavailableApplication = await testApp(new UnreadyStore());
+    const throwingApplication = await testApp(new ThrowingStore());
 
-    expect((await readyApplication.app.inject({ method: "GET", url: "/readyz" })).statusCode).toBe(200);
+    const firstReady = await readyApplication.app.inject({ method: "GET", url: "/readyz" });
+    const cachedReady = await readyApplication.app.inject({ method: "GET", url: "/readyz" });
+    expect(firstReady.statusCode).toBe(200);
+    expect(cachedReady.statusCode).toBe(200);
+    expect(firstReady.headers["x-ratelimit-limit"]).toBe("300");
+    expect(readyStore.readinessChecks).toBe(1);
     const unavailable = await unavailableApplication.app.inject({ method: "GET", url: "/readyz" });
     expect(unavailable.statusCode).toBe(503);
     expect(unavailable.json()).toEqual({ status: "not_ready" });
+    const throwing = await throwingApplication.app.inject({ method: "GET", url: "/readyz" });
+    expect(throwing.statusCode).toBe(503);
+    expect(throwing.json()).toEqual({ status: "not_ready" });
+  });
+
+  it("returns a stable production 403 for a disallowed HTTP Origin", async () => {
+    const { app } = await productionTestApp();
+    const rejected = await app.inject({
+      method: "GET",
+      url: "/v1/catalog",
+      headers: { origin: "https://evil.example" },
+    });
+    expect(rejected.statusCode).toBe(403);
+    expect(rejected.json()).toEqual({
+      error: "request_error",
+      message: "Доступ запрещён",
+    });
+
+    const allowed = await app.inject({
+      method: "GET",
+      url: "/v1/catalog",
+      headers: { origin: "https://game.neivara.example" },
+    });
+    expect(allowed.statusCode).toBe(200);
+    expect(allowed.headers["access-control-allow-origin"]).toBe(
+      "https://game.neivara.example",
+    );
+  });
+
+  it("publishes the Dawnmere zone and six monster definitions in the catalog", async () => {
+    const { app } = await testApp();
+    const response = await app.inject({ method: "GET", url: "/v1/catalog" });
+    expect(response.statusCode).toBe(200);
+    const catalog = response.json<{
+      zone: { id: string; name: string };
+      monsters: Array<{ kind: string; name: string; elite: boolean }>;
+    }>();
+    expect(catalog.zone).toMatchObject({
+      id: "dawnmere_crossing",
+      name: "Переправа Донмер",
+    });
+    expect(catalog.monsters).toHaveLength(6);
+    expect(catalog.monsters.map(({ kind }) => kind)).toEqual([
+      "thorn_prowler",
+      "moss_mauler",
+      "cave_shrieker",
+      "ruin_sentinel",
+      "bramble_boar",
+      "ember_drake",
+    ]);
   });
 
   it("registers, authenticates and creates a character", async () => {
@@ -55,12 +147,13 @@ describe("account and character API", () => {
       method: "POST",
       url: "/v1/characters",
       headers: { authorization: `Bearer ${auth.token}` },
-      payload: { name: "Тайра", race: "erim", classId: "warbound" },
+      payload: { name: "Тайра", race: "human", gender: "female", classId: "warrior" },
     });
     expect(created.statusCode).toBe(201);
-    const body = created.json<{ character: { hp: number; classId: string } }>();
-    expect(body.character.classId).toBe("warbound");
-    expect(body.character.hp).toBe(getClass("warbound").baseHp);
+    const body = created.json<{ character: { hp: number; classId: string; gender: string } }>();
+    expect(body.character.classId).toBe("warrior");
+    expect(body.character.gender).toBe("female");
+    expect(body.character.hp).toBe(getClass("warrior").baseHp);
 
     const list = await app.inject({
       method: "GET",
@@ -68,7 +161,9 @@ describe("account and character API", () => {
       headers: { authorization: `Bearer ${auth.token}` },
     });
     expect(list.statusCode).toBe(200);
-    expect(list.json<{ characters: unknown[] }>().characters).toHaveLength(1);
+    const listed = list.json<{ characters: Array<{ gender: string }> }>().characters;
+    expect(listed).toHaveLength(1);
+    expect(listed[0]?.gender).toBe("female");
   });
 
   it("rejects duplicate account names case-insensitively", async () => {
@@ -99,7 +194,7 @@ describe("account and character API", () => {
       method: "POST",
       url: "/v1/characters",
       headers: { authorization: `Bearer ${token}` },
-      payload: { name: "Нейра", race: "vaeli", classId: "lifewarden" },
+      payload: { name: "Нейра", race: "light_elf", gender: "female", classId: "mage" },
     });
     const characterId = created.json<{ character: { id: string } }>().character.id;
 
@@ -115,7 +210,7 @@ describe("account and character API", () => {
       derivedStats: { maxHp: number; armor: number };
     }>();
     expect(body.inventory.items).toHaveLength(8);
-    expect(body.equipment.main_hand?.itemId).toBe("wellspring_scepter");
+    expect(body.equipment.main_hand?.itemId).toBe("emberglyph_staff");
     expect(body.derivedStats.armor).toBeGreaterThan(0);
 
     const tonic = body.inventory.items.find((item) => item.itemId === "field_tonic")!;

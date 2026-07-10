@@ -19,45 +19,21 @@ const CLASS_COMBAT_BASE: Readonly<
     >
   >
 > = {
-  warbound: {
+  warrior: {
     physicalAttack: 20,
     spellPower: 5,
-    armor: 22,
+    armor: 20,
     resistance: 10,
-    accuracy: 82,
-    evasion: 5,
+    accuracy: 85,
+    evasion: 7,
   },
-  pathfinder: {
-    physicalAttack: 18,
-    spellPower: 7,
-    armor: 11,
-    resistance: 9,
-    accuracy: 91,
-    evasion: 12,
-  },
-  runesmith: {
+  mage: {
     physicalAttack: 7,
     spellPower: 23,
     armor: 7,
     resistance: 18,
     accuracy: 86,
     evasion: 7,
-  },
-  lifewarden: {
-    physicalAttack: 9,
-    spellPower: 19,
-    armor: 10,
-    resistance: 19,
-    accuracy: 87,
-    evasion: 8,
-  },
-  oathweaver: {
-    physicalAttack: 10,
-    spellPower: 20,
-    armor: 9,
-    resistance: 17,
-    accuracy: 87,
-    evasion: 9,
   },
 };
 

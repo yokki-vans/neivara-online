@@ -1,4 +1,11 @@
-import type { AbilityId, ClassId, RaceId } from "./content.js";
+import type {
+  AbilityId,
+  ClassId,
+  GenderId,
+  MonsterKind,
+  RaceId,
+  StarterZoneId,
+} from "./content.js";
 import type {
   DerivedCharacterStats,
   EquipmentSlot,
@@ -22,6 +29,7 @@ export interface CharacterSummary {
   id: string;
   name: string;
   race: RaceId;
+  gender: GenderId;
   classId: ClassId;
   level: number;
   xp: number;
@@ -50,6 +58,7 @@ export interface PlayerSnapshot {
   id: string;
   name: string;
   race: RaceId;
+  gender: GenderId;
   classId: ClassId;
   position: Vec3;
   rotationY: number;
@@ -68,7 +77,7 @@ export interface PlayerSnapshot {
 
 export interface MonsterSnapshot {
   id: string;
-  kind: "mireling" | "hollow_sentinel";
+  kind: MonsterKind;
   name: string;
   position: Vec3;
   rotationY: number;
@@ -98,7 +107,7 @@ export interface WorldSnapshot {
   tick: number;
   selfId: string;
   lastProcessedInput: number;
-  zoneId: "silent_wellspring_vale";
+  zoneId: StarterZoneId;
   zoneName: string;
   players: PlayerSnapshot[];
   monsters: MonsterSnapshot[];

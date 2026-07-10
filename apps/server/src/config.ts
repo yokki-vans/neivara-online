@@ -74,6 +74,68 @@ function trustProxyValue(
   return trusted;
 }
 
+export function normalizeHttpOrigin(value: string, name = "Origin"): string {
+  const candidate = value.trim();
+  let parsed: URL;
+  try {
+    parsed = new URL(candidate);
+  } catch {
+    throw new Error(`${name} must be an origin-only HTTP(S) URL`);
+  }
+
+  if (
+    (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+    parsed.username ||
+    parsed.password ||
+    parsed.pathname !== "/" ||
+    parsed.search ||
+    parsed.hash
+  ) {
+    throw new Error(`${name} must be an origin-only HTTP(S) URL`);
+  }
+  return parsed.origin;
+}
+
+export function isAllowedRequestOrigin(
+  origin: string | undefined,
+  allowedOrigins: ReadonlySet<string>,
+): boolean {
+  if (!origin) return true;
+  try {
+    return allowedOrigins.has(normalizeHttpOrigin(origin, "Request Origin"));
+  } catch {
+    return false;
+  }
+}
+
+function railwayPublicOrigin(value: string | undefined): string | null {
+  const domain = value?.trim();
+  if (!domain) return null;
+  if (domain.includes("://")) {
+    throw new Error("RAILWAY_PUBLIC_DOMAIN must be a hostname without a URL scheme");
+  }
+  if (domain.includes(":")) {
+    throw new Error("RAILWAY_PUBLIC_DOMAIN must be a plain public hostname");
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(`https://${domain}`);
+  } catch {
+    throw new Error("RAILWAY_PUBLIC_DOMAIN must be a plain public hostname");
+  }
+  if (
+    parsed.username ||
+    parsed.password ||
+    parsed.port ||
+    parsed.pathname !== "/" ||
+    parsed.search ||
+    parsed.hash
+  ) {
+    throw new Error("RAILWAY_PUBLIC_DOMAIN must be a plain public hostname");
+  }
+  return parsed.origin;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const rawNodeEnv = env.NODE_ENV ?? "development";
   if (
@@ -103,10 +165,22 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     throw new Error("JWT_SECRET must contain at least 32 characters");
   }
 
-  const clientOrigins = (env.CLIENT_ORIGINS ?? "http://localhost:5173")
+  const defaultClientOrigins = nodeEnv === "production" ? "" : "http://localhost:5173";
+  const configuredClientOrigins = (env.CLIENT_ORIGINS ?? defaultClientOrigins)
     .split(",")
-    .map((origin) => origin.trim().replace(/\/$/, ""))
-    .filter(Boolean);
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+    .map((origin) => normalizeHttpOrigin(origin, "CLIENT_ORIGINS entry"));
+  const inferredRailwayOrigin = railwayPublicOrigin(env.RAILWAY_PUBLIC_DOMAIN);
+  const clientOrigins = [...new Set([
+    ...configuredClientOrigins,
+    ...(inferredRailwayOrigin ? [inferredRailwayOrigin] : []),
+  ])];
+  if (nodeEnv === "production" && clientOrigins.length === 0) {
+    throw new Error(
+      "Production requires CLIENT_ORIGINS or RAILWAY_PUBLIC_DOMAIN with a public origin",
+    );
+  }
 
   return {
     nodeEnv,

@@ -4,6 +4,7 @@ import type {
   ClassId,
   EquipmentLoadout,
   EquipmentSlot,
+  GenderId,
   InventoryStack,
   InventoryView,
   ItemId,
@@ -19,6 +20,9 @@ import {
   getOccupiedEquipmentSlots,
   getStarterItemGrants,
   isEquippableItem,
+  normalizeClassId,
+  normalizeGenderId,
+  normalizeRaceId,
   resolveEnhancementAttempt,
 } from "@neivara/shared";
 import { Pool, type PoolClient } from "pg";
@@ -77,6 +81,7 @@ interface CharacterRow {
   account_id: string;
   name: string;
   race: RaceId;
+  gender: GenderId;
   class_id: ClassId;
   level: number;
   xp: number;
@@ -88,6 +93,12 @@ interface CharacterRow {
   position_z: number;
   created_at: Date;
   last_seen_at: Date;
+}
+
+interface PersistedCharacterRow extends Omit<CharacterRow, "race" | "gender" | "class_id"> {
+  race: string;
+  gender: string | null;
+  class_id: string;
 }
 
 interface ItemInstanceRow {
@@ -133,12 +144,23 @@ function mapAccount(row: AccountRow): AccountRecord {
   };
 }
 
-function mapCharacter(row: CharacterRow): CharacterRecord {
+function normalizeCharacterRow(row: PersistedCharacterRow): CharacterRow {
+  return {
+    ...row,
+    race: normalizeRaceId(row.race),
+    gender: normalizeGenderId(row.gender),
+    class_id: normalizeClassId(row.class_id),
+  };
+}
+
+function mapCharacter(persisted: PersistedCharacterRow): CharacterRecord {
+  const row = normalizeCharacterRow(persisted);
   return {
     id: row.id,
     accountId: row.account_id,
     name: row.name,
     race: row.race,
+    gender: row.gender,
     classId: row.class_id,
     level: row.level,
     xp: row.xp,
@@ -151,12 +173,13 @@ function mapCharacter(row: CharacterRow): CharacterRecord {
   };
 }
 
-function toSummary(row: CharacterRow): CharacterSummary {
+function toSummary(row: PersistedCharacterRow): CharacterSummary {
   const record = mapCharacter(row);
   return {
     id: record.id,
     name: record.name,
     race: record.race,
+    gender: record.gender,
     classId: record.classId,
     level: record.level,
     xp: record.xp,
@@ -363,7 +386,7 @@ export class PostgresGameStore implements GameStore {
   }
 
   async listCharacters(accountId: string): Promise<CharacterSummary[]> {
-    const result = await this.pool.query<CharacterRow>(
+    const result = await this.pool.query<PersistedCharacterRow>(
       "SELECT * FROM characters WHERE account_id = $1 ORDER BY last_seen_at DESC",
       [accountId],
     );
@@ -383,10 +406,10 @@ export class PostgresGameStore implements GameStore {
         throw new LimitError("Достигнут лимит в 7 персонажей");
       }
 
-      const result = await client.query<CharacterRow>(
+      const result = await client.query<PersistedCharacterRow>(
         `INSERT INTO characters(
-           id, account_id, name, name_key, race, class_id, hp, mp
-         ) VALUES($1, $2, $3, $4, $5, $6, $7, $8)
+           id, account_id, name, name_key, race, gender, class_id, hp, mp
+         ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING *`,
         [
           randomUUID(),
@@ -394,6 +417,7 @@ export class PostgresGameStore implements GameStore {
           input.name,
           input.name.toLocaleLowerCase("ru"),
           input.race,
+          input.gender ?? "male",
           input.classId,
           input.hp,
           input.mp,
@@ -456,7 +480,7 @@ export class PostgresGameStore implements GameStore {
     characterId: string,
     accountId: string,
   ): Promise<CharacterRecord | null> {
-    const result = await this.pool.query<CharacterRow>(
+    const result = await this.pool.query<PersistedCharacterRow>(
       "SELECT * FROM characters WHERE id = $1 AND account_id = $2",
       [characterId, accountId],
     );
@@ -1240,12 +1264,13 @@ export class PostgresGameStore implements GameStore {
   }
 
   private async lockCharacter(client: PoolClient, characterId: string): Promise<CharacterRow> {
-    const result = await client.query<CharacterRow>(
+    const result = await client.query<PersistedCharacterRow>(
       "SELECT * FROM characters WHERE id = $1 FOR UPDATE",
       [characterId],
     );
-    if (!result.rows[0]) throw new NotFoundError("Персонаж не найден");
-    return result.rows[0];
+    const row = result.rows[0];
+    if (!row) throw new NotFoundError("Персонаж не найден");
+    return normalizeCharacterRow(row);
   }
 
   private async lockItem(

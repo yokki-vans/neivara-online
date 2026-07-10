@@ -1,12 +1,12 @@
 # Архитектура
 
 ```text
-GitHub Pages
-  Vite + React HUD + Babylon.js
-      │ HTTPS REST / WSS Socket.IO
-      ▼
-Railway: modular monolith
-  Fastify API + auth + authoritative game loop
+Railway: единый HTTPS origin
+  Fastify
+    ├── Vite + React HUD + Babylon.js (static + SPA fallback)
+    ├── /v1 + auth
+    ├── /socket.io (authoritative realtime world)
+    └── /healthz + /readyz
       │
       ▼
 PostgreSQL
@@ -16,6 +16,8 @@ PostgreSQL
 ## Почему модульный монолит
 
 Для одной зоны и десятков игроков один процесс проще тестировать и развёртывать. Декомпозиция на gateway и zone workers нужна только после измеренной нагрузки. Границы модулей уже отделяют auth, persistence, world simulation, combat и content.
+
+Production Docker image собирает клиент и сервер вместе. HTML и manifest не кешируются, fingerprinted Vite chunks отдаются с immutable cache, а стабильные GLB/texture paths перепроверяются через ETag; HTML и текстовые bundles сжимаются на origin, тогда как GLB исключены из повторного сжатия. SPA fallback применяется только к browser navigation и никогда не перехватывает API, health, readiness, assets или Socket.IO.
 
 ## Модель доверия
 

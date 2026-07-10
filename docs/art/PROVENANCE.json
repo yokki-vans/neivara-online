@@ -36,6 +36,86 @@
       "sourceSha256": "4d7730c6dcac44d184062dea5d3742abe796400b6f8fe5e43d2a635241c89379",
       "runtimePath": "apps/client/public/assets/concepts/neivara-equipment-sheet.jpg",
       "runtimeSha256": "241738ccaad5d3065532fe1799dc03d20147e3b439e500b3d51d748a2ad01de0"
+    },
+    {
+      "id": "neivara-character-roster-v2",
+      "originOutputName": "exec-c6c46cfb-5c24-48cd-ade0-acdf6d4b9d8d.png",
+      "sourcePath": "docs/art/source/neivara-character-roster-v2.png",
+      "sourceSha256": "f138ab92f3c83bbb6e270c3942a0b34adacdd94d5db40f41b948f2f5323ae4b5",
+      "runtimePath": "apps/client/public/assets/concepts/neivara-character-roster-v2.jpg",
+      "runtimeSha256": "29aab97a308fcc29024d5902b357b4aa96d4334f83cbf968f80d569795bd3a35"
+    },
+    {
+      "id": "dawnmere-crossing-concept",
+      "originOutputName": "exec-36d7412d-f8c8-4483-b599-547283212cbe.png",
+      "sourcePath": "docs/art/source/dawnmere-crossing-concept.png",
+      "sourceSha256": "c9ed2b8a6c80b24daddae22958cf75e5218a7f3cf42ec4fdc2629a1f1f18a2c4",
+      "runtimePath": "apps/client/public/assets/concepts/dawnmere-crossing-concept.jpg",
+      "runtimeSha256": "e5dc79a8c4b4e3402d78122660497471961836b6b16cd51b048ca4d5d03bc5de"
+    },
+    {
+      "id": "dawnmere-monsters-sheet",
+      "originOutputName": "exec-69bbd8e6-2df3-4217-a597-82257b5d5d2e.png",
+      "sourcePath": "docs/art/source/dawnmere-monsters-sheet.png",
+      "sourceSha256": "e0bc3b9d5bce620ea8cce80276a7b1b35114d0b67f203c5d85680a7733790245",
+      "runtimePath": "apps/client/public/assets/concepts/dawnmere-monsters-sheet.jpg",
+      "runtimeSha256": "ded54c1a540f683220d05bd280ac630748e23cfcee03fa3a7cbd19fa7996e913"
+    },
+    {
+      "id": "neivara-character-material-atlas",
+      "originOutputName": "exec-c20cbb80-c89d-4629-865f-c9993f660ec0.png",
+      "sourcePath": "docs/art/source/neivara-character-material-atlas.png",
+      "sourceSha256": "a7e39326f09e1aa0708ee73bd3e3970db2ad5ad23986f7c42258bc5a751a7a96",
+      "runtimePath": "apps/client/public/assets/textures/neivara-character-material-atlas.jpg",
+      "runtimeSha256": "57a0cd115bc53ba32bf513f04f0c4332398905921cad0ee416eea3d9428bbd6e"
+    },
+    {
+      "id": "dawnmere-environment-material-atlas",
+      "originOutputName": "exec-7c18a38d-29ee-4ddb-845a-a59a790e29d0.png",
+      "sourcePath": "docs/art/source/dawnmere-environment-material-atlas.png",
+      "sourceSha256": "16aa84f4bfc399a4f6e4009ddfea986d24be3352b06ac65c49ea6b6c1950d84a",
+      "runtimePath": "apps/client/public/assets/textures/dawnmere-environment-material-atlas.jpg",
+      "runtimeSha256": "7ca03da7885430ac8ab89ca7fa292aecd36b3c553912835fd87428afa858c4ad"
+    },
+    {
+      "id": "dawnmere-moss-limestone",
+      "originOutputName": "exec-7c18a38d-29ee-4ddb-845a-a59a790e29d0.png",
+      "sourcePath": "docs/art/source/dawnmere-environment-material-atlas.png",
+      "sourceSha256": "16aa84f4bfc399a4f6e4009ddfea986d24be3352b06ac65c49ea6b6c1950d84a",
+      "runtimePath": "apps/client/public/assets/textures/dawnmere/moss-limestone.jpg",
+      "runtimeSha256": "eb414f034e2161b4ad2929d0aef9a4d20835d72f28d5006a8258bd1944200086"
+    },
+    {
+      "id": "dawnmere-packed-earth",
+      "originOutputName": "exec-7c18a38d-29ee-4ddb-845a-a59a790e29d0.png",
+      "sourcePath": "docs/art/source/dawnmere-environment-material-atlas.png",
+      "sourceSha256": "16aa84f4bfc399a4f6e4009ddfea986d24be3352b06ac65c49ea6b6c1950d84a",
+      "runtimePath": "apps/client/public/assets/textures/dawnmere/packed-earth.jpg",
+      "runtimeSha256": "ea17d01f59bf0600844b996e4bee2cb53124d932c422bdcf7fc03f7aec243b47"
+    },
+    {
+      "id": "dawnmere-river-stone",
+      "originOutputName": "exec-7c18a38d-29ee-4ddb-845a-a59a790e29d0.png",
+      "sourcePath": "docs/art/source/dawnmere-environment-material-atlas.png",
+      "sourceSha256": "16aa84f4bfc399a4f6e4009ddfea986d24be3352b06ac65c49ea6b6c1950d84a",
+      "runtimePath": "apps/client/public/assets/textures/dawnmere/river-stone.jpg",
+      "runtimeSha256": "d0da325a9671d61a0a3f984122e39d6128c1610f22c4b280ba0b6c053aa1f4db"
+    },
+    {
+      "id": "dawnmere-rooted-ruin",
+      "originOutputName": "exec-7c18a38d-29ee-4ddb-845a-a59a790e29d0.png",
+      "sourcePath": "docs/art/source/dawnmere-environment-material-atlas.png",
+      "sourceSha256": "16aa84f4bfc399a4f6e4009ddfea986d24be3352b06ac65c49ea6b6c1950d84a",
+      "runtimePath": "apps/client/public/assets/textures/dawnmere/rooted-ruin.jpg",
+      "runtimeSha256": "84c74c664c08b60cb7058cf3442340cd217e7c411fc441046d8f3e78f4cb56ec"
+    },
+    {
+      "id": "dawnmere-cave-rock",
+      "originOutputName": "exec-7c18a38d-29ee-4ddb-845a-a59a790e29d0.png",
+      "sourcePath": "docs/art/source/dawnmere-environment-material-atlas.png",
+      "sourceSha256": "16aa84f4bfc399a4f6e4009ddfea986d24be3352b06ac65c49ea6b6c1950d84a",
+      "runtimePath": "apps/client/public/assets/textures/dawnmere/cave-rock.jpg",
+      "runtimeSha256": "82e1b3f891dad95f14ded3b87ad1d6083a9e68c63d7e027c7225a89cfb65bccf"
     }
   ]
 }

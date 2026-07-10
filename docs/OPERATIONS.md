@@ -2,7 +2,7 @@
 
 ## Deployment
 
-`main` is the only production source. GitHub Actions verifies the high/critical dependency audit, tests, TypeScript, lint, assets, a real PostgreSQL migration/inventory integration test, application builds, the production Docker image and the CycloneDX SBOM. GitHub Pages publishes the client only after `CI / verify` succeeds.
+`main` is the only production source. GitHub Actions verifies the high/critical dependency audit, tests, TypeScript, lint, assets, a real PostgreSQL migration/inventory integration test, application builds, the production Docker image and the CycloneDX SBOM. The Railway image contains both the Vite client and Fastify server; GitHub Pages is not part of production.
 
 Railway must remain at exactly **one server replica in one region**. Realtime rooms, world ownership and some session effects are process-local. A second replica can split connected players and create conflicting world simulation even when PostgreSQL writes remain atomic. Do not increase the replica count until shared presence/session state, distributed zone ownership and cross-instance realtime fan-out are implemented and load-tested.
 
@@ -20,12 +20,13 @@ Before public traffic, configure a GitHub ruleset for `main` and retain screensh
 - [ ] block force-pushes and branch deletion, and restrict bypass to an emergency owner;
 - [ ] confirm Railway source branch is `main`, Wait for CI is enabled and PR branches cannot deploy to production;
 - [ ] confirm the Railway server has one replica, one region and no manually created duplicate service;
-- [ ] perform one test merge and prove that failed CI prevents both Pages and Railway production deployment.
+- [ ] perform one test merge and prove that failed CI prevents the unified Railway production deployment.
 
 ## Health
 
 - `/healthz` is process liveness and must not depend on PostgreSQL.
 - `/readyz` is traffic readiness and checks the active store with a short timeout.
+- Railway serves UI, `/v1`, `/socket.io`, `/healthz` and `/readyz` from one HTTPS origin.
 - Railway uses `/readyz`; repeated failures remove/restart an unhealthy instance.
 
 After deploy verify `/healthz`, `/readyz`, `/v1/catalog`, registration, character creation, inventory and the two-client smoke test.
@@ -54,6 +55,10 @@ Production migrations use the expand-migrate-contract pattern: add compatible st
 - Never combine an old binary with a database snapshot/schema from a different release without a documented compatibility test.
 
 Release 0.2 is explicitly not binary-rollback-compatible with 0.1 after new writes: canonical inventory moved from `inventory_stacks` to `item_instances`. Use fix-forward, or restore a matched pre-0.2 database snapshot and 0.1 image together.
+
+Release 0.3 migration 7 is the **expand** step for character identity. It adds persisted `gender` with the legacy-safe `male` default, leaves existing `race`/`class_id` values unchanged, and installs constraints that accept both the 0.2 aliases and the 0.3 canonical IDs. The 0.3 persistence reader normalizes either vocabulary before any API, world, inventory or locked character operation, so legacy rows are exposed only as canonical IDs at runtime.
+
+Do not combine the expand step with an in-place identity rewrite. After every 0.2 instance is retired and the application rollback window is closed, a later migration may backfill legacy IDs in bounded batches while dual-read support remains enabled. Verify the remaining legacy/unknown counts, then ship a separate **contract** release that narrows the constraints and only afterwards removes the shared legacy normalizers. Although migration 7 preserves old rows and old writes, a rollback to 0.2 is not safe after 0.3 has accepted new canonical character rows; prefer a 0.3 fix-forward or restore the matched pre-0.3 snapshot and image together.
 
 ## Backup and restore drill
 

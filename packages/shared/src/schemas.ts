@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CLASS_IDS, RACE_IDS } from "./content.js";
+import { CLASS_IDS, GENDER_IDS, RACE_IDS } from "./content.js";
 
 export const usernameSchema = z
   .string()
@@ -30,6 +30,7 @@ export const loginSchema = registerSchema;
 export const createCharacterSchema = z.object({
   name: characterNameSchema,
   race: z.enum(RACE_IDS),
+  gender: z.enum(GENDER_IDS),
   classId: z.enum(CLASS_IDS),
 });
 
@@ -51,14 +52,7 @@ export const targetInputSchema = z.object({
 
 export const abilityInputSchema = z.object({
   seq: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
-  abilityId: z.enum([
-    "basic",
-    "iron_vow",
-    "far_mark",
-    "ember_sigil",
-    "mending_current",
-    "echo_companion",
-  ]),
+  abilityId: z.enum(["basic", "vanguard_strike", "aether_bolt"]),
   targetId: z.string().uuid().nullable(),
 });
 

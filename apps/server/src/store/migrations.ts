@@ -279,4 +279,47 @@ export const MIGRATIONS: readonly Migration[] = [
         ON world_state_operations(expires_at);
     `,
   },
+  {
+    version: 7,
+    name: "expand_character_identity_catalog",
+    sql: `
+      ALTER TABLE characters
+        ADD COLUMN IF NOT EXISTS gender VARCHAR(16) NOT NULL DEFAULT 'male';
+
+      DO $migration$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conname = 'characters_race_valid'
+            AND conrelid = 'characters'::regclass
+        ) THEN
+          ALTER TABLE characters ADD CONSTRAINT characters_race_valid
+            CHECK (race IN (
+              'erim', 'vaeli', 'narai', 'kerran', 'dairi',
+              'human', 'light_elf', 'dark_elf', 'dwarf', 'orc'
+            ));
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conname = 'characters_gender_valid'
+            AND conrelid = 'characters'::regclass
+        ) THEN
+          ALTER TABLE characters ADD CONSTRAINT characters_gender_valid
+            CHECK (gender IN ('male', 'female'));
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conname = 'characters_class_id_valid'
+            AND conrelid = 'characters'::regclass
+        ) THEN
+          ALTER TABLE characters ADD CONSTRAINT characters_class_id_valid
+            CHECK (class_id IN (
+              'warbound', 'pathfinder', 'runesmith', 'lifewarden', 'oathweaver',
+              'warrior', 'mage'
+            ));
+        END IF;
+      END
+      $migration$;
+    `,
+  },
 ];
