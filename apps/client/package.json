@@ -12,7 +12,7 @@
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
-    "@babylonjs/core": "^9.16.1",
+    "@babylonjs/core": "^9.17.0",
     "@babylonjs/loaders": "^9.16.1",
     "@neivara/shared": "0.3.1",
     "react": "^19.2.7",
