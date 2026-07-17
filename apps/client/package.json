@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@babylonjs/core": "^9.16.1",
-    "@babylonjs/loaders": "^9.16.1",
+    "@babylonjs/loaders": "^9.17.0",
     "@neivara/shared": "0.3.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
